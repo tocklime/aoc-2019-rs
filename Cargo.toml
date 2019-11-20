@@ -1,5 +1,5 @@
 [package]
-name = "aoc-2018-rs"
+name = "aoc-2019-rs"
 version = "0.1.0"
 authors = ["Greg Manning <greg@gregmanning.uk>"]
 edition = "2018"
