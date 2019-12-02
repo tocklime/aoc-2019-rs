@@ -23,14 +23,12 @@ impl OpCode {
         }
     }
     fn execute(&self, c: &mut Computer) {
-        let arg_count = self.arg_count();
-        let args: Vec<usize> = (0..arg_count).map(|x| c.load(x + 1)).collect();
         match self {
-            OpCode::Add => c.abs_store(args[2], c.abs_load(args[0]) + c.abs_load(args[1])),
-            OpCode::Mult => c.abs_store(args[2], c.abs_load(args[0]) * c.abs_load(args[1])),
+            OpCode::Add => c.abs_store(c.load(3), c.abs_load(c.load(1)) + c.abs_load(c.load(2))),
+            OpCode::Mult => c.abs_store(c.load(3), c.abs_load(c.load(1)) * c.abs_load(c.load(2))),
             OpCode::Halt => c.state = ComputerState::HALTED,
         }
-        c.inc_ip(1 + arg_count)
+        c.inc_ip(1 + self.arg_count())
     }
 }
 
