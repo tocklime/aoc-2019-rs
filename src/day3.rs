@@ -1,5 +1,4 @@
 use super::utils::points::{Dir, Point};
-use std::cmp::min;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
@@ -53,7 +52,7 @@ pub fn p1(input: &[Wire]) -> usize {
 pub fn p2(input: &[Wire]) -> usize {
     let mut d: HashMap<Point, usize> = HashMap::new();
     for (p, i) in points(&input[0]).zip(1..) {
-        d.entry(p).and_modify(|e| *e = min(*e, i)).or_insert(i);
+        d.entry(p).or_insert(i);
     }
     points(&input[1])
         .zip(1..)
