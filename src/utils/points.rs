@@ -1,13 +1,44 @@
-use parse_display::{Display, FromStr};
 use std::cmp::{max, min};
 use std::ops::{Add, AddAssign, Mul};
 
-#[derive(Display, FromStr, PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Dir {
     U,
     D,
     L,
     R,
+}
+
+impl Dir {
+    pub fn from_udlr(c: &str) -> Option<Dir> {
+        match c {
+            "U" => Some(Dir::U),
+            "L" => Some(Dir::L),
+            "D" => Some(Dir::D),
+            "R" => Some(Dir::R),
+            _ => None,
+        }
+    }
+    pub fn from_nsew(c: &str) -> Option<Dir> {
+        match c {
+            "N" => Some(Dir::U),
+            "W" => Some(Dir::L),
+            "S" => Some(Dir::D),
+            "E" => Some(Dir::R),
+            _ => None,
+        }
+    }
+    pub fn as_point_delta(self) -> Point {
+        match self {
+            Dir::U => Point(0, 1),
+            Dir::D => Point(0, -1),
+            Dir::L => Point(-1, 0),
+            Dir::R => Point(1, 0),
+        }
+    }
+    pub fn is_horizontal(self) -> bool {
+        self == Dir::R || self == Dir::L
+    }
 }
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Point(pub isize, pub isize);
@@ -45,68 +76,54 @@ impl Point {
     }
 }
 
-impl Dir {
-    pub fn as_point_delta(self) -> Point {
-        match self {
-            Dir::U => Point(0, 1),
-            Dir::D => Point(0, -1),
-            Dir::L => Point(-1, 0),
-            Dir::R => Point(1, 0),
-        }
-    }
-    pub fn is_horizontal(self) -> bool {
-        self == Dir::R || self == Dir::L
-    }
-}
-
 #[derive(Clone, Copy, Debug)]
 pub struct Aabb {
-    pub top_left: Point,
-    pub bottom_right: Point,
+    pub bottom_left: Point,
+    pub top_right: Point,
 }
 
 impl Aabb {
     pub fn new(p: Point) -> Self {
         Aabb {
-            top_left: p,
-            bottom_right: p,
+            bottom_left: p,
+            top_right: p,
         }
     }
 
     pub fn extend(&self, p: Point) -> Self {
         let mut ans = self.clone();
-        ans.top_left.0 = min(ans.top_left.0, p.0);
-        ans.top_left.1 = min(ans.top_left.1, p.1);
-        ans.bottom_right.0 = max(ans.bottom_right.0, p.0);
-        ans.bottom_right.1 = max(ans.bottom_right.1, p.1);
+        ans.bottom_left.0 = min(ans.bottom_left.0, p.0);
+        ans.bottom_left.1 = min(ans.bottom_left.1, p.1);
+        ans.top_right.0 = max(ans.top_right.0, p.0);
+        ans.top_right.1 = max(ans.top_right.1, p.1);
         ans
     }
     pub fn contains(&self, p: Point) -> bool {
-        self.top_left.0 <= p.0
-            && self.top_left.1 <= p.1
-            && self.bottom_right.0 >= p.0
-            && self.bottom_right.1 >= p.1
+        self.bottom_left.0 <= p.0
+            && self.bottom_left.1 <= p.1
+            && self.top_right.0 >= p.0
+            && self.top_right.1 >= p.1
     }
     pub fn extend_box(&self, b: Self) -> Self {
-        self.extend(b.top_left).extend(b.bottom_right)
+        self.extend(b.bottom_left).extend(b.top_right)
     }
     pub fn intersect(&self, b: Self) -> Self {
         Aabb {
-            top_left: Point(
-                max(self.top_left.0, b.top_left.0),
-                max(self.top_left.1, b.top_left.1),
+            bottom_left: Point(
+                max(self.bottom_left.0, b.bottom_left.0),
+                max(self.bottom_left.1, b.bottom_left.1),
             ),
-            bottom_right: Point(
-                min(self.bottom_right.0, b.bottom_right.0),
-                min(self.bottom_right.1, b.bottom_right.1),
+            top_right: Point(
+                min(self.top_right.0, b.top_right.0),
+                min(self.top_right.1, b.top_right.1),
             ),
         }
     }
     pub fn width(&self) -> isize {
-        self.bottom_right.0 - self.top_left.0
+        self.top_right.0 - self.bottom_left.0
     }
     pub fn height(&self) -> isize {
-        self.bottom_right.1 - self.top_left.1
+        self.top_right.1 - self.bottom_left.1
     }
 }
 
@@ -116,6 +133,6 @@ pub fn bb_tests() {
     let b = Aabb::new(Point(-3, 4)).extend(Point(8, 4));
     let i = a.intersect(b);
     println!("{:?}", i);
-    assert_eq!(i.top_left, Point(0, 4));
-    assert_eq!(i.bottom_right, Point(0, 4));
+    assert_eq!(i.bottom_left, Point(0, 4));
+    assert_eq!(i.top_right, Point(0, 4));
 }

@@ -26,7 +26,7 @@ impl WireLine {
             return None;
         }
         let a = bb1.intersect(bb2);
-        Some(a.top_left)
+        Some(a.bottom_left)
     }
     pub fn signal_delay_at(self, p: Point) -> usize {
         self.signal_delay + p.manhattan(self.start)
@@ -45,16 +45,14 @@ pub fn gen(input: &str) -> Vec<Wire> {
             l.split(',')
                 .map(|i| {
                     let (d, n) = i.split_at(1);
-                    let dir: Dir = d.parse().unwrap();
-                    let len: usize = n.parse().unwrap();
                     let wl = WireLine {
-                        dir: d.parse().unwrap(),
+                        dir: Dir::from_udlr(d).unwrap(),
                         len: n.parse().unwrap(),
                         start: p,
                         signal_delay: delay,
                     };
-                    delay += len;
-                    p += dir.as_point_delta() * len;
+                    delay += wl.len;
+                    p += wl.dir.as_point_delta() * wl.len;
                     return wl;
                 })
                 .collect()
