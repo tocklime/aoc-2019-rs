@@ -1,5 +1,6 @@
 use super::utils::nums::int_to_digits;
 use itertools::Itertools;
+use rayon::prelude::*;
 
 pub fn check_groups(input: &[u8], check: fn(usize) -> bool) -> bool {
     let groups = input.iter().group_by(|x| *x);
@@ -17,6 +18,7 @@ pub fn check_groups(input: &[u8], check: fn(usize) -> bool) -> bool {
 
 pub fn find(input: &[usize], group_check: fn(usize) -> bool) -> usize {
     (input[0]..=input[1])
+        .into_par_iter()
         .filter(|&x| check_groups(&int_to_digits(x), group_check))
         .count()
 }
