@@ -1,8 +1,12 @@
-pub fn int_to_digits(i: usize) -> Vec<u8> {
-    format!("{}", i)
-        .chars()
-        .map(|x| x.to_string().parse().unwrap())
-        .collect()
+pub fn int_to_digits(i: usize) -> Vec<usize> {
+    let mut v = Vec::with_capacity(10);
+    let mut r = i;
+    while r > 0 {
+        v.push(r % 10);
+        r = r / 10;
+    }
+    v.reverse();
+    v
 }
 
 pub fn is_sorted(i: &[u8]) -> bool {
