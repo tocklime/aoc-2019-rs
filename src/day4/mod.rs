@@ -1,18 +1,23 @@
-use super::utils::nums::{int_to_digits, is_sorted};
+use super::utils::nums::int_to_digits;
 use itertools::Itertools;
 
 pub fn check_groups(input: &[u8], check: fn(usize) -> bool) -> bool {
-    input
-        .iter()
-        .group_by(|x| *x)
-        .into_iter()
-        .any(|x| check(x.1.count()))
+    let groups = input.iter().group_by(|x| *x);
+    let mut last_key: Option<u8> = None;
+    let mut saw_any_match = false;
+    for (&k, g) in groups.into_iter() {
+        if last_key.map_or(false, |l| l > k) {
+            return false; //key decreased!
+        }
+        last_key = Some(k);
+        saw_any_match |= check(g.count());
+    }
+    saw_any_match
 }
 
 pub fn find(input: &[usize], group_check: fn(usize) -> bool) -> usize {
     (input[0]..=input[1])
-        .map(int_to_digits)
-        .filter(|x| is_sorted(&x) && check_groups(&x, group_check))
+        .filter(|&x| check_groups(&int_to_digits(x), group_check))
         .count()
 }
 
