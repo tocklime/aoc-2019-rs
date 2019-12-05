@@ -2,9 +2,10 @@ use super::utils::nums::int_to_digits;
 use itertools::Itertools;
 use rayon::prelude::*;
 
-pub fn check_groups(input: &[u8], check: fn(usize) -> bool) -> bool {
-    let groups = input.iter().group_by(|x| *x);
-    let mut last_key: Option<u8> = None;
+pub fn check_groups(input: usize, check: fn(usize) -> bool) -> bool {
+    let digs = int_to_digits(input);
+    let groups = digs.iter().group_by(|x| *x);
+    let mut last_key: Option<usize> = None;
     let mut saw_any_match = false;
     for (&k, g) in groups.into_iter() {
         if last_key.map_or(false, |l| l > k) {
@@ -19,7 +20,7 @@ pub fn check_groups(input: &[u8], check: fn(usize) -> bool) -> bool {
 pub fn find(input: &[usize], group_check: fn(usize) -> bool) -> usize {
     (input[0]..=input[1])
         .into_par_iter()
-        .filter(|&x| check_groups(&int_to_digits(x), group_check))
+        .filter(|&x| check_groups(x, group_check))
         .count()
 }
 
