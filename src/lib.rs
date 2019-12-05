@@ -4,7 +4,6 @@ extern crate aoc_runner;
 extern crate aoc_runner_derive;
 
 pub mod comp;
-pub mod comp_tests;
 pub mod day1;
 pub mod day2;
 pub mod day3;

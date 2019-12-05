@@ -1,5 +1,6 @@
 use super::utils::points::{Aabb, Dir, Point};
 
+mod day3_tests;
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub struct WireLine {
     dir: Dir,

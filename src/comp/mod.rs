@@ -3,6 +3,7 @@ use std::cmp::min;
 use std::convert::TryFrom;
 use std::convert::TryInto;
 
+mod comp_tests;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ComputerState {
     RUNNING,

@@ -1,5 +1,8 @@
-use super::day3::*;
-use super::utils::points::*;
+#[cfg(test)]
+use super::super::utils::points::*;
+
+#[cfg(test)]
+use super::{gen, p1, p2, WireLine};
 #[test]
 pub fn wire_intersections() {
     let w1 = WireLine {

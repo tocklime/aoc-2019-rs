@@ -1,7 +1,14 @@
-use super::comp::{Computer, ComputerState};
-use super::day2;
+#[cfg(test)]
+use super::*;
+
+#[cfg(test)]
+pub fn gen(input: &str) -> Vec<isize> {
+    input.split(',').map(|x| x.parse().unwrap()).collect()
+}
+
+#[cfg(test)]
 pub fn t(input: &str, out_ix: isize) -> isize {
-    Computer::new(&day2::gen(input)).run().abs_load(out_ix)
+    Computer::new(&gen(input)).run().abs_load(out_ix)
 }
 
 #[test]
@@ -12,8 +19,9 @@ pub fn day2_tests() {
     assert_eq!(t("1,1,1,4,99,5,6,0,99", 0), 30);
 }
 
+#[cfg(test)]
 pub fn t2(input: &str, i_val: isize) -> isize {
-    let mem = &day2::gen(input);
+    let mem = &gen(input);
     let mut c = Computer::new(mem);
     c.with_input(i_val);
 
