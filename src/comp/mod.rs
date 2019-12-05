@@ -93,7 +93,10 @@ impl Op {
                 let p2 = ps[1].get(c);
                 c.abs_store(ps[2].imm(), if p1 == p2 { 1 } else { 0 });
             }
-            OpCode::Halt => c.state = ComputerState::HALTED,
+            OpCode::Halt => {
+                c.state = ComputerState::HALTED;
+                do_ip_inc = false;
+            }
         }
         if do_ip_inc {
             c.inc_ip((1 + op_count).try_into().unwrap());
@@ -172,10 +175,7 @@ impl Computer<'_> {
         self.abs_load(self.instruction_pointer + offset)
     }
     pub fn store(&mut self, offset: isize, value: isize) {
-        let as_u: usize = (self.instruction_pointer + offset)
-            .try_into()
-            .expect("Negative memory location");
-        self.memory[as_u] = value;
+        self.abs_store(self.instruction_pointer + offset, value)
     }
     pub fn abs_store(&mut self, offset: isize, value: isize) {
         let as_u: usize = offset.try_into().expect("Negative memory location");
