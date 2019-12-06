@@ -35,7 +35,7 @@ impl<'a> OrbitalMap<'a> {
             None => {
                 let chain = self.get_chain_to_root(obj);
                 for (ix, i) in chain.iter().enumerate() {
-                    //self.depth_cache.insert(i, chain.len() - ix);
+                    self.depth_cache.insert(i, chain.len() - ix);
                 }
                 chain.len()
             }
@@ -52,12 +52,12 @@ fn gen<'a>(input: &'a str) -> OrbitalMap<'a> {
 }
 #[aoc(day6, part1)]
 pub fn p1(input: &str) -> usize {
-    let ors = gen(input);
-    ors.map.values().map(|x| ors.get_depth(x)).sum()
+    let mut ors = gen(input);
+    ors.map.values().map(|x| ors.get_depth_cached(x)).sum()
 }
 #[aoc(day6, part2)]
 pub fn p2(input: &str) -> usize {
-    let mut ors = gen(input);
+    let ors = gen(input);
     let my_chain = ors.get_chain_to_root("YOU");
     let san_chain = ors.get_chain_to_root("SAN");
     let prefix = my_chain
