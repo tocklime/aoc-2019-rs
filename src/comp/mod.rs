@@ -140,6 +140,11 @@ impl Computer<'_> {
         c.reset();
         return c;
     }
+    /*     pub fn disassembly(&self) -> String {
+        let mut ip = 0;
+        while (ip < self.memory.len()) {}
+        unimplemented!("Still working on this");
+    } */
     pub fn get_args(&self) -> [isize; 4] {
         let as_u = self.instruction_pointer as usize;
         let mut ans: [isize; 4] = Default::default();
