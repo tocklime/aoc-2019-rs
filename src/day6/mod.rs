@@ -7,68 +7,56 @@ struct OrbitalMap<'a> {
 }
 
 impl<'a> OrbitalMap<'a> {
-    pub fn new() -> OrbitalMap<'a> {
+    pub fn from_str(input: &'a str) -> OrbitalMap<'a> {
         OrbitalMap {
-            map: HashMap::new(),
+            map: input
+                .lines()
+                .map(|l| l.split(')').collect::<Vec<&str>>())
+                .map(|a| (a[1], a[0]))
+                .collect(),
             depth_cache: RefCell::new(HashMap::new()),
         }
     }
     fn get_chain_to_root(&self, obj: &'a str) -> Vec<&str> {
         let mut curr: Option<&&str> = Some(&obj);
         let mut vec: Vec<&str> = Vec::new();
-        loop {
-            match curr {
-                None => break,
-                Some(x) => {
-                    vec.push(x);
-                    curr = self.map.get(x);
-                }
-            }
+        while let Some(x) = curr {
+            vec.push(x);
+            curr = self.map.get(x);
         }
         vec
     }
     pub fn get_depth(&'a self, obj: &'a str) -> usize {
         let mut dc = self.depth_cache.borrow_mut();
-        match dc.get(obj) {
-            Some(&x) => x,
-            None => {
-                let chain = self.get_chain_to_root(obj);
-                for (ix, i) in chain.iter().enumerate() {
-                    if dc.contains_key(i) {
-                        break;
-                    }
-                    dc.insert(i, chain.len() - ix);
+        dc.get(obj).cloned().unwrap_or_else(|| {
+            let chain = self.get_chain_to_root(obj);
+            for (ix, i) in chain.iter().enumerate() {
+                if dc.contains_key(i) {
+                    break;
                 }
-                chain.len()
+                dc.insert(i, chain.len() - ix);
             }
-        }
+            chain.len()
+        })
     }
-}
-fn gen<'a>(input: &'a str) -> OrbitalMap<'a> {
-    let mut ors = OrbitalMap::new();
-    for l in input.lines() {
-        let e: Vec<&str> = l.split(')').collect();
-        ors.map.insert(e[1], e[0]);
-    }
-    ors
 }
 #[aoc(day6, part1)]
 pub fn p1(input: &str) -> usize {
-    let ors = gen(input);
+    let ors = OrbitalMap::from_str(input);
     ors.map.values().map(|x| ors.get_depth(x)).sum()
 }
 #[aoc(day6, part2)]
 pub fn p2(input: &str) -> usize {
-    let ors = gen(input);
+    let ors = OrbitalMap::from_str(input);
     let my_chain = ors.get_chain_to_root("YOU");
     let san_chain = ors.get_chain_to_root("SAN");
-    let prefix = my_chain
+    let common_prefix_len = my_chain
         .iter()
         .rev()
         .zip(san_chain.iter().rev())
         .take_while(|(a, b)| a == b)
         .count();
-    return my_chain.len() + san_chain.len() - 2 * (prefix + 1);
+    return my_chain.len() + san_chain.len() - 2 * (common_prefix_len + 1);
 }
 
 #[test]
