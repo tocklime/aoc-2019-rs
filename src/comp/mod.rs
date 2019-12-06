@@ -78,7 +78,7 @@ impl Op {
             OpCode::Output => c.output = ps[0].get(c),
             OpCode::JumpIfTrue | OpCode::JumpIfFalse => {
                 let cond = ps[0].get(c);
-                if (cond > 0) == (self.op == OpCode::JumpIfTrue) {
+                if (cond != 0) == (self.op == OpCode::JumpIfTrue) {
                     c.instruction_pointer = ps[1].get(c);
                     do_ip_inc = false;
                 }
