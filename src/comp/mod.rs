@@ -2,6 +2,7 @@ use num_enum::TryFromPrimitive;
 use std::cmp::min;
 use std::convert::TryFrom;
 use std::convert::TryInto;
+use std::fmt;
 
 mod comp_tests;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -30,6 +31,22 @@ pub enum OpCode {
     Equals = 8,
     Halt = 99,
 }
+impl fmt::Display for OpCode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            OpCode::Add => "Add",
+            OpCode::Mult => "Mult",
+            OpCode::Input => "Input",
+            OpCode::Output => "Output",
+            OpCode::JumpIfTrue => "Jump If True",
+            OpCode::JumpIfFalse => "Jump If False",
+            OpCode::LessThan => "Less Than",
+            OpCode::Equals => "Equals",
+            OpCode::Halt => "Halt",
+        };
+        write!(f, "{: <20}", s)
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Op {
@@ -51,21 +68,32 @@ impl Arg {
         }
     }
 }
+impl fmt::Display for Arg {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self.1 {
+            ParameterMode::IMMEDIATE => write!(f, " {: <4}", self.0),
+            ParameterMode::POSITION => write!(f, "@{: <4}", self.0),
+        }
+    }
+}
 
 impl Op {
-    pub fn from_mem_slice(m: &[isize; 4]) -> Op {
+    pub fn try_from_mem_slice(m: &[isize; 4]) -> Option<Op> {
         let ps = m[0] / 100;
         let op1 = (ps / 1) % 10;
         let op2 = (ps / 10) % 10;
         let op3 = (ps / 100) % 10;
-        Op {
-            op: OpCode::try_from(m[0] % 100).unwrap(),
+        Some(Op {
+            op: OpCode::try_from(m[0] % 100).ok()?,
             args: [
-                Arg(m[1], ParameterMode::try_from(op1).unwrap()),
-                Arg(m[2], ParameterMode::try_from(op2).unwrap()),
-                Arg(m[3], ParameterMode::try_from(op3).unwrap()),
+                Arg(m[1], ParameterMode::try_from(op1).ok()?),
+                Arg(m[2], ParameterMode::try_from(op2).ok()?),
+                Arg(m[3], ParameterMode::try_from(op3).ok()?),
             ],
-        }
+        })
+    }
+    pub fn from_mem_slice(m: &[isize; 4]) -> Op {
+        Op::try_from_mem_slice(m).unwrap()
     }
     fn execute(&self, c: &mut Computer) {
         let op_count = self.op.arg_count();
@@ -101,6 +129,15 @@ impl Op {
         if do_ip_inc {
             c.inc_ip((1 + op_count).try_into().unwrap());
         }
+    }
+}
+impl fmt::Display for Op {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{: <20}", self.op)?;
+        for i in 0..self.op.arg_count() {
+            write!(f, "{: <5} ", self.args[i])?;
+        }
+        fmt::Result::Ok(())
     }
 }
 
@@ -140,16 +177,31 @@ impl Computer<'_> {
         c.reset();
         return c;
     }
-    /*     pub fn disassembly(&self) -> String {
+    pub fn disassembly(&self) -> String {
         let mut ip = 0;
-        while (ip < self.memory.len()) {}
-        unimplemented!("Still working on this");
-    } */
-    pub fn get_args(&self) -> [isize; 4] {
-        let as_u = self.instruction_pointer as usize;
+        let mut output = String::new();
+        while ip < self.memory.len() {
+            let a = self.get_args(ip);
+            match Op::try_from_mem_slice(&a) {
+                Some(o) => {
+                    output.push_str(&format!("{: >4}: {}\n", ip, o));
+                    ip += 1 + o.op.arg_count();
+                }
+                None => {
+                    for i in 0..=3 {
+                        output.push_str(&format!("{: >4}: {}\n", ip, a[i]));
+                        ip += 1;
+                    }
+                }
+            }
+        }
+        output
+    }
+
+    pub fn get_args(&self, ip: usize) -> [isize; 4] {
         let mut ans: [isize; 4] = Default::default();
-        let end = min(as_u + 4, self.memory.len());
-        let mem_slice = &self.memory[as_u..end];
+        let end = min(ip + 4, self.memory.len());
+        let mem_slice = &self.memory[ip..end];
         for i in 0..mem_slice.len() {
             ans[i] = mem_slice[i];
         }
@@ -169,7 +221,7 @@ impl Computer<'_> {
         return self;
     }
     pub fn current_op_with_args(&self) -> Op {
-        let ms = self.get_args();
+        let ms = self.get_args(self.instruction_pointer as usize);
         Op::from_mem_slice(&ms)
     }
     pub fn abs_load(&self, pos: isize) -> isize {
