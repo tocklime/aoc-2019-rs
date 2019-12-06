@@ -1,15 +1,16 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 
 struct OrbitalMap<'a> {
     map: HashMap<&'a str, &'a str>,
-    depth_cache: HashMap<&'a str, usize>,
+    depth_cache: RefCell<HashMap<&'a str, usize>>,
 }
 
 impl<'a> OrbitalMap<'a> {
     pub fn new() -> OrbitalMap<'a> {
         OrbitalMap {
             map: HashMap::new(),
-            depth_cache: HashMap::new(),
+            depth_cache: RefCell::new(HashMap::new()),
         }
     }
     fn get_chain_to_root(&self, obj: &'a str) -> Vec<&str> {
@@ -26,16 +27,17 @@ impl<'a> OrbitalMap<'a> {
         }
         vec
     }
-    pub fn get_depth(self: &'a Self, obj: &'a str) -> usize {
-        self.get_chain_to_root(obj).len()
-    }
-    pub fn get_depth_cached(self: &'a mut Self, obj: &'a str) -> usize {
-        match self.depth_cache.get(obj) {
+    pub fn get_depth(&'a self, obj: &'a str) -> usize {
+        let mut dc = self.depth_cache.borrow_mut();
+        match dc.get(obj) {
             Some(&x) => x,
             None => {
                 let chain = self.get_chain_to_root(obj);
                 for (ix, i) in chain.iter().enumerate() {
-                    self.depth_cache.insert(i, chain.len() - ix);
+                    if dc.contains_key(i) {
+                        break;
+                    }
+                    dc.insert(i, chain.len() - ix);
                 }
                 chain.len()
             }
@@ -52,8 +54,8 @@ fn gen<'a>(input: &'a str) -> OrbitalMap<'a> {
 }
 #[aoc(day6, part1)]
 pub fn p1(input: &str) -> usize {
-    let mut ors = gen(input);
-    ors.map.values().map(|x| ors.get_depth_cached(x)).sum()
+    let ors = gen(input);
+    ors.map.values().map(|x| ors.get_depth(x)).sum()
 }
 #[aoc(day6, part2)]
 pub fn p2(input: &str) -> usize {
