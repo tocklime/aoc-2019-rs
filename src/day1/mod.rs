@@ -1,7 +1,7 @@
 use itertools::{iterate, unfold};
 
-pub fn rocket_fn(x: &i32) -> i32 {
-    (*x / 3) - 2
+pub fn rocket_fn(x: i32) -> i32 {
+    (x / 3) - 2
 }
 
 #[aoc_generator(day1)]
@@ -11,7 +11,7 @@ pub fn input_generator(input: &str) -> Vec<i32> {
 
 #[aoc(day1, part1)]
 pub fn part1(input: &[i32]) -> i32 {
-    input.iter().map(rocket_fn).sum()
+    input.iter().cloned().map(rocket_fn).sum()
 }
 
 #[aoc(day1, part2, unfold)]
@@ -19,7 +19,7 @@ pub fn part2(input: &[i32]) -> i32 {
     input
         .iter()
         .flat_map(|x| {
-            unfold(*x, |last_mass| match rocket_fn(last_mass) {
+            unfold(*x, |last_mass| match rocket_fn(*last_mass) {
                 a if a <= 0 => None,
                 a => {
                     *last_mass = a;
@@ -33,7 +33,8 @@ pub fn part2(input: &[i32]) -> i32 {
 pub fn part2_2(input: &[i32]) -> i32 {
     input
         .iter()
-        .flat_map(|&x| iterate(x, rocket_fn).skip(1).take_while(|&x| x > 0))
+        .cloned()
+        .flat_map(|x| iterate(x, |&y| rocket_fn(y)).skip(1).take_while(|&x| x > 0))
         .sum()
 }
 

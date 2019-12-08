@@ -53,7 +53,6 @@ pub fn p2_transpose(input: &str) -> String {
     transpose_inplace(&mut pixels, &mut scratch, IM_SIZE, layer_count);
     pixels
         .chunks(layer_count)
-        .into_iter()
         .map(|l| l.iter().cloned().find(|&x| x != 'X').unwrap())
         .chunks(WIDTH)
         .into_iter()

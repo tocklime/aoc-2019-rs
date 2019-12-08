@@ -54,7 +54,7 @@ pub fn gen(input: &str) -> Vec<Wire> {
                     };
                     delay += wl.len;
                     p += wl.dir.as_point_delta() * wl.len;
-                    return wl;
+                    wl
                 })
                 .collect()
         })

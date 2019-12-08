@@ -91,7 +91,7 @@ impl Aabb {
     }
 
     pub fn extend(&self, p: Point) -> Self {
-        let mut ans = self.clone();
+        let mut ans = *self;
         ans.bottom_left.0 = min(ans.bottom_left.0, p.0);
         ans.bottom_left.1 = min(ans.bottom_left.1, p.1);
         ans.top_right.0 = max(ans.top_right.0, p.0);

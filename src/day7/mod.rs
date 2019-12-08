@@ -31,7 +31,7 @@ pub fn p2(input: &[isize]) -> isize {
         .max()
         .unwrap()
 }
-fn run_comp_loop(input: &[isize], a: &Vec<isize>) -> isize {
+fn run_comp_loop(input: &[isize], a: &[isize]) -> isize {
     let c_count = a.len();
     let comps: Vec<_> = std::iter::repeat_with(|| Arc::new(Mutex::new(Computer::new(input))))
         .take(c_count)

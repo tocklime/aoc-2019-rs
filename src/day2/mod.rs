@@ -22,7 +22,7 @@ pub fn p2(input: &[isize]) -> isize {
     for n in 0..100 {
         for v in 0..100 {
             c.reset();
-            if run_with_args(&mut c, n, v) == 19690720 {
+            if run_with_args(&mut c, n, v) == 19_690_720 {
                 return 100 * n + v;
             }
         }

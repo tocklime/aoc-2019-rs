@@ -3,7 +3,7 @@ pub fn int_to_digits(i: usize) -> Vec<usize> {
     let mut r = i;
     while r > 0 {
         v.push(r % 10);
-        r = r / 10;
+        r /= 10;
     }
     v.reverse();
     v

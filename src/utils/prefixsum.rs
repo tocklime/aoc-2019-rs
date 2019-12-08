@@ -7,5 +7,5 @@ pub fn de_prefixsum<T: AddAssign + Default + Copy>(input: &[T]) -> Vec<T> {
         total += *i;
         ans.push(total);
     }
-    return ans;
+    ans
 }

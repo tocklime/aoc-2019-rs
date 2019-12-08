@@ -21,7 +21,7 @@ pub struct Computer {
 }
 
 impl Computer {
-    pub fn new<'b>(initial_mem: &'b [isize]) -> Computer {
+    pub fn new(initial_mem: &[isize]) -> Computer {
         let mut c = Computer {
             initial_mem: Vec::from(initial_mem),
             name: String::from("COMP"),
@@ -33,7 +33,7 @@ impl Computer {
             output_chan: None,
         };
         c.reset();
-        return c;
+        c
     }
     pub fn with_name(&mut self, n: String) -> &mut Self {
         self.name = n;
@@ -50,8 +50,8 @@ impl Computer {
                     ip += 1 + o.op.arg_count();
                 }
                 None => {
-                    for i in 0..=3 {
-                        output.push_str(&format!("{: >4}: {}\n", ip, a[i]));
+                    for i in &a {
+                        output.push_str(&format!("{: >4}: {}\n", ip, i));
                         ip += 1;
                     }
                 }
@@ -64,9 +64,7 @@ impl Computer {
         let mut ans: [isize; 4] = Default::default();
         let end = min(ip + 4, self.memory.len());
         let mem_slice = &self.memory[ip..end];
-        for i in 0..mem_slice.len() {
-            ans[i] = mem_slice[i];
-        }
+        ans[..mem_slice.len()].clone_from_slice(&mem_slice[..]);
         ans
     }
     pub fn get_output(&self) -> isize {
@@ -87,11 +85,11 @@ impl Computer {
         self.output_chan = Some(x);
         self
     }
-    pub fn reset(&mut self) -> &Self {
-        self.memory = self.initial_mem.iter().cloned().collect();
+    pub fn reset(&mut self) -> &mut Self {
+        self.memory = self.initial_mem.to_vec();
         self.instruction_pointer = 0;
         self.state = ComputerState::RUNNING;
-        return self;
+        self
     }
     pub fn current_op_with_args(&self) -> Op {
         let ms = self.get_args(self.instruction_pointer as usize);
@@ -124,9 +122,9 @@ impl Computer {
             }
         }
     }
-    pub fn step(&mut self) -> &Self {
+    pub fn step(&mut self) -> &mut Self {
         self.current_op_with_args().execute(self);
-        return self;
+        self
     }
     pub fn state(&self) -> ComputerState {
         self.state
@@ -142,7 +140,7 @@ pub struct Op {
 impl Op {
     pub fn try_from_mem_slice(m: &[isize; 4]) -> Option<Op> {
         let ps = m[0] / 100;
-        let op1 = (ps / 1) % 10;
+        let op1 = ps % 10;
         let op2 = (ps / 10) % 10;
         let op3 = (ps / 100) % 10;
         Some(Op {

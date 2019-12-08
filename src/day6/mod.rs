@@ -56,7 +56,7 @@ pub fn p2(input: &str) -> usize {
         .zip(san_chain.iter().rev())
         .take_while(|(a, b)| a == b)
         .count();
-    return my_chain.len() + san_chain.len() - 2 * (common_prefix_len + 1);
+    my_chain.len() + san_chain.len() - 2 * (common_prefix_len + 1)
 }
 
 #[test]
