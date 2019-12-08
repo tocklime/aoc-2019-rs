@@ -42,7 +42,7 @@ pub fn p2_forloop(input: &str) -> String {
     }
     image
         .iter()
-        .map(|x| "\n".to_string() + &x.iter().collect::<String>())
+        .map(|x| format!("\n{}", x.iter().format("")))
         .join("")
 }
 #[aoc(day8, part2, transpose)]
@@ -56,7 +56,7 @@ pub fn p2_transpose(input: &str) -> String {
         .map(|l| l.iter().cloned().find(|&x| x != 'X').unwrap())
         .chunks(WIDTH)
         .into_iter()
-        .map(|x| "\n".to_string() + &x.collect::<String>())
+        .map(|x| format!("\n{}", x.format("")))
         .join("")
 }
 #[aoc(day8, part2, steps)]
@@ -73,6 +73,6 @@ pub fn p2_steps(input: &str) -> String {
         })
         .chunks(WIDTH)
         .into_iter()
-        .map(|x| "\n".to_string() + &x.collect::<String>())
+        .map(|x| format!("\n{}", x.format("")))
         .join("")
 }
