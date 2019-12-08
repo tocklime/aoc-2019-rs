@@ -2,6 +2,7 @@ use log::info;
 use std::cmp::min;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
+use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 
 use super::enums::*;
@@ -76,6 +77,14 @@ impl Computer {
             InputMode::Channel(_) => unimplemented!(),
         }
         self
+    }
+    pub fn connect_output_from(&mut self, other: &mut Self, initial_input: &[isize]) -> &mut Self {
+        let (tx, rx) = mpsc::channel::<isize>();
+        for &v in initial_input {
+            tx.send(v).expect("Failed to send initial value");
+        }
+        other.with_chan_output(tx);
+        self.with_chan_input(rx)
     }
     pub fn with_chan_input(&mut self, x: Receiver<isize>) -> &mut Self {
         self.input = InputMode::Channel(x);

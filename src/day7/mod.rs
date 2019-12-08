@@ -1,6 +1,6 @@
 use super::comp::Computer;
 use itertools::Itertools;
-use std::sync::{mpsc, Arc, Mutex};
+use std::sync::{Arc, Mutex};
 use std::thread;
 
 #[aoc_generator(day7)]
@@ -37,20 +37,15 @@ fn run_comp_loop(input: &[isize], a: &[isize]) -> isize {
         .take(c_count)
         .collect();
     for (ix, v) in a.iter().enumerate() {
-        let (tx, rx) = mpsc::channel::<isize>();
-        tx.send(*v).expect("Failed to set init value");
+        let mut this_comp = comps[ix].lock().unwrap();
+        let mut prev_comp = comps[(ix + c_count - 1) % c_count].lock().unwrap();
+        let mut input = vec![*v];
         if ix == 0 {
-            tx.send(0).expect("Failed to set input");
+            input.push(0)
         }
-        comps[ix]
-            .lock()
-            .unwrap()
-            .with_chan_input(rx)
-            .with_name(format!("C-{}-{}", ix, v));
-        comps[(ix + c_count - 1) % c_count]
-            .lock()
-            .unwrap()
-            .with_chan_output(tx);
+        this_comp
+            .with_name(format!("C-{}-{}", ix, v))
+            .connect_output_from(&mut prev_comp, &input);
     }
     let ts: Vec<_> = comps
         .iter()
