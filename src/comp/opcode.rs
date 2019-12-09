@@ -12,6 +12,7 @@ pub enum OpCode {
     JumpIfFalse = 6,
     LessThan = 7,
     Equals = 8,
+    MoveRelativeBase = 9,
     Halt = 99,
 }
 impl fmt::Display for OpCode {
@@ -25,6 +26,7 @@ impl fmt::Display for OpCode {
             OpCode::JumpIfFalse => "Jump If False",
             OpCode::LessThan => "Less Than",
             OpCode::Equals => "Equals",
+            OpCode::MoveRelativeBase => "Move Relative Base",
             OpCode::Halt => "Halt",
         };
         write!(f, "{: <20}", s)
@@ -40,6 +42,7 @@ impl OpCode {
             OpCode::JumpIfTrue | OpCode::JumpIfFalse => 2,
             OpCode::LessThan | OpCode::Equals => 3,
             OpCode::Halt => 0,
+            OpCode::MoveRelativeBase => 1,
         }
     }
 }

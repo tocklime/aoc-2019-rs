@@ -1,5 +1,6 @@
 use log::info;
-use std::cmp::min;
+use std::cmp;
+use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::sync::mpsc;
@@ -13,12 +14,13 @@ use super::opcode::OpCode;
 pub struct Computer {
     name: String,
     initial_mem: Vec<isize>,
-    memory: Vec<isize>,
+    memory: HashMap<isize, isize>,
     instruction_pointer: isize,
     state: ComputerState,
     input: InputMode,
     last_output: isize,
     output_chan: Option<Sender<isize>>,
+    relative_base: isize,
 }
 
 impl Computer {
@@ -26,12 +28,13 @@ impl Computer {
         let mut c = Computer {
             initial_mem: Vec::from(initial_mem),
             name: String::from("COMP"),
-            memory: vec![0; initial_mem.len()],
+            memory: HashMap::new(), //vec![0; initial_mem.len()],
             instruction_pointer: 0,
             state: ComputerState::RUNNING,
             input: InputMode::List(vec![]),
             last_output: 0,
             output_chan: None,
+            relative_base: 0,
         };
         c.reset();
         c
@@ -43,7 +46,11 @@ impl Computer {
     pub fn disassembly(&self) -> String {
         let mut ip = 0;
         let mut output = String::new();
-        while ip < self.memory.len() {
+        let max_mem: usize = cmp::max(
+            self.initial_mem.len(),
+            *self.memory.keys().max().unwrap_or(&0) as usize,
+        );
+        while ip < max_mem {
             let a = self.get_args(ip);
             match Op::try_from_mem_slice(&a) {
                 Some(o) => {
@@ -63,9 +70,9 @@ impl Computer {
 
     pub fn get_args(&self, ip: usize) -> [isize; 4] {
         let mut ans: [isize; 4] = Default::default();
-        let end = min(ip + 4, self.memory.len());
-        let mem_slice = &self.memory[ip..end];
-        ans[..mem_slice.len()].clone_from_slice(&mem_slice[..]);
+        for i in 0..4 {
+            ans[i] = self.abs_load((ip + i) as isize);
+        }
         ans
     }
     pub fn get_output(&self) -> isize {
@@ -95,7 +102,7 @@ impl Computer {
         self
     }
     pub fn reset(&mut self) -> &mut Self {
-        self.memory = self.initial_mem.to_vec();
+        self.memory = HashMap::new();
         self.instruction_pointer = 0;
         self.state = ComputerState::RUNNING;
         self
@@ -105,8 +112,27 @@ impl Computer {
         Op::from_mem_slice(&ms)
     }
     pub fn abs_load(&self, pos: isize) -> isize {
-        let as_u: usize = pos.try_into().expect("Bad memory location");
-        self.memory[as_u]
+        *self.memory.get(&pos).unwrap_or_else(|| {
+            if pos >= 0 && (pos as usize) < self.initial_mem.len() {
+                &self.initial_mem[pos as usize]
+            } else {
+                &0
+            }
+        })
+    }
+    pub fn rel_load(&self, offset: isize) -> isize {
+        let a = self.abs_load(self.relative_base + offset);
+        /*println!(
+            "RELLOAD {} + {} ({}) = {}",
+            self.relative_base,
+            offset,
+            self.relative_base + offset,
+            a
+        );*/
+        a
+    }
+    pub fn rel_offset(&self, offset: isize) -> isize {
+        self.relative_base + offset
     }
     pub fn load(&self, offset: isize) -> isize {
         self.abs_load(self.instruction_pointer + offset)
@@ -115,8 +141,8 @@ impl Computer {
         self.abs_store(self.instruction_pointer + offset, value)
     }
     pub fn abs_store(&mut self, offset: isize, value: isize) {
-        let as_u: usize = offset.try_into().expect("Negative memory location");
-        self.memory[as_u] = value;
+        //println!("STORE @{} = {}", offset, value);
+        *self.memory.entry(offset).or_insert(0) = value;
     }
     pub fn inc_ip(&mut self, offset: isize) {
         self.instruction_pointer += offset;
@@ -152,14 +178,16 @@ impl Op {
         let op1 = ps % 10;
         let op2 = (ps / 10) % 10;
         let op3 = (ps / 100) % 10;
-        Some(Op {
+        let o = Some(Op {
             op: OpCode::try_from(m[0] % 100).ok()?,
             args: [
                 Arg::new(m[1], ParameterMode::try_from(op1).ok()?),
                 Arg::new(m[2], ParameterMode::try_from(op2).ok()?),
                 Arg::new(m[3], ParameterMode::try_from(op3).ok()?),
             ],
-        })
+        });
+        //println!("E: {}\n", o.unwrap());
+        o
     }
     pub fn from_mem_slice(m: &[isize; 4]) -> Op {
         Op::try_from_mem_slice(m).unwrap()
@@ -169,10 +197,10 @@ impl Op {
         let ps = self.args;
         let mut do_ip_inc = true;
         match self.op {
-            OpCode::Add => c.abs_store(ps[2].imm(), ps[0].get(c) + ps[1].get(c)),
-            OpCode::Mult => c.abs_store(ps[2].imm(), ps[0].get(c) * ps[1].get(c)),
-            OpCode::LessThan => c.abs_store(ps[2].imm(), (ps[0].get(c) < ps[1].get(c)).into()),
-            OpCode::Equals => c.abs_store(ps[2].imm(), (ps[0].get(c) == ps[1].get(c)).into()),
+            OpCode::Add => c.abs_store(ps[2].ptr(c), ps[0].get(c) + ps[1].get(c)),
+            OpCode::Mult => c.abs_store(ps[2].ptr(c), ps[0].get(c) * ps[1].get(c)),
+            OpCode::LessThan => c.abs_store(ps[2].ptr(c), (ps[0].get(c) < ps[1].get(c)).into()),
+            OpCode::Equals => c.abs_store(ps[2].ptr(c), (ps[0].get(c) == ps[1].get(c)).into()),
             OpCode::Input => {
                 info!(target: "IO", "{} INP WAIT", c.name);
                 let i = match &mut c.input {
@@ -180,10 +208,12 @@ impl Op {
                     InputMode::Channel(r) => r.recv().expect("No value on receiver"),
                 };
                 info!(target: "IO", "{} INP --> {}", c.name, i);
-                c.abs_store(ps[0].imm(), i);
+                //println!("INP --> {}, {:?}", i, ps);
+                c.abs_store(ps[0].ptr(c), i);
             }
             OpCode::Output => {
                 let o = ps[0].get(c);
+                //println!("OUT: {}", o);
                 c.last_output = o;
                 if let Some(ch) = &c.output_chan {
                     info!(target: "IO", "{} OUT <-- {}", c.name, o);
@@ -196,6 +226,10 @@ impl Op {
                     do_ip_inc = false;
                 }
             }
+            OpCode::MoveRelativeBase => {
+                c.relative_base += ps[0].get(c);
+                //println!("RELBASE NOW {}", c.relative_base);
+            }
             OpCode::Halt => {
                 c.state = ComputerState::HALTED;
                 info!("{} HALTED", c.name);
@@ -205,6 +239,7 @@ impl Op {
         if do_ip_inc {
             c.inc_ip((1 + op_count).try_into().unwrap());
         }
+        //println!("IP = {}", c.instruction_pointer);
     }
 }
 impl fmt::Display for Op {
