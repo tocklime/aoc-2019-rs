@@ -1,12 +1,8 @@
-use super::enums::*;
 use super::*;
-
-pub fn gen(input: &str) -> Vec<isize> {
-    input.split(',').map(|x| x.parse().unwrap()).collect()
-}
+use std::str::FromStr;
 
 pub fn t(input: &str, out_ix: isize) -> isize {
-    Computer::new(&gen(input)).run().abs_load(out_ix)
+    Computer::from_str(input).unwrap().run().abs_load(out_ix)
 }
 
 #[test]
@@ -18,15 +14,8 @@ pub fn day2_tests() {
 }
 
 pub fn t2(input: &str, i_val: isize) -> isize {
-    let mem = &gen(input);
-    let mut c = Computer::new(mem);
-    c.with_input(i_val);
-
-    while c.state() == ComputerState::RUNNING {
-        //println!("{:?}", c);
-        c.step();
-    }
-    c.get_last_output()
+    let mut c = Computer::from_str(input).unwrap();
+    c.with_input(i_val).run().get_last_output()
 }
 #[test]
 pub fn cmp_tests() {

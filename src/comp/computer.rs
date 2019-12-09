@@ -215,7 +215,7 @@ impl Op {
             OpCode::LessThan => c.abs_store(ps[2].ptr(c), (ps[0].get(c) < ps[1].get(c)).into()),
             OpCode::Equals => c.abs_store(ps[2].ptr(c), (ps[0].get(c) == ps[1].get(c)).into()),
             OpCode::Input => {
-                let i = if c.fixed_input.is_empty() {
+                let i = if !c.fixed_input.is_empty() {
                     c.fixed_input.remove(0)
                 } else if let Some(r) = &c.input_chan {
                     info!(target: "IO", "{} INP WAIT", c.name);
