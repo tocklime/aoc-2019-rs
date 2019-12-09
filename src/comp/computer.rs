@@ -116,6 +116,8 @@ impl Computer {
         self.memory = HashMap::new();
         self.instruction_pointer = 0;
         self.state = ComputerState::RUNNING;
+        self.relative_base = 0;
+        self.fixed_input = vec![];
         self
     }
     pub fn current_op_with_args(&self) -> Op {
