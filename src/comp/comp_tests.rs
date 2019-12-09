@@ -26,7 +26,7 @@ pub fn t2(input: &str, i_val: isize) -> isize {
         //println!("{:?}", c);
         c.step();
     }
-    c.get_output()
+    c.get_last_output()
 }
 #[test]
 pub fn cmp_tests() {

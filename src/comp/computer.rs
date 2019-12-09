@@ -3,11 +3,12 @@ use std::cmp;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
+use std::num::ParseIntError;
+use std::str::FromStr;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
 
 use super::enums::*;
-use super::inputmode::InputMode;
 use super::oparg::Arg;
 use super::opcode::OpCode;
 #[derive(Debug)]
@@ -17,22 +18,32 @@ pub struct Computer {
     memory: HashMap<isize, isize>,
     instruction_pointer: isize,
     state: ComputerState,
-    input: InputMode,
-    last_output: isize,
+    fixed_input: Vec<isize>,
+    input_chan: Option<Receiver<isize>>,
+    output: Vec<isize>,
     output_chan: Option<Sender<isize>>,
     relative_base: isize,
 }
 
+impl FromStr for Computer {
+    type Err = ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let is: Result<Vec<_>, _> = s.split(',').map(|x| x.parse::<isize>()).collect();
+        Ok(Computer::new(&is?))
+    }
+}
 impl Computer {
-    pub fn new(initial_mem: &[isize]) -> Computer {
+    pub fn new(initial_mem: &[isize]) -> Self {
         let mut c = Computer {
             initial_mem: Vec::from(initial_mem),
             name: String::from("COMP"),
-            memory: HashMap::new(), //vec![0; initial_mem.len()],
+            memory: HashMap::new(),
             instruction_pointer: 0,
             state: ComputerState::RUNNING,
-            input: InputMode::List(vec![]),
-            last_output: 0,
+            fixed_input: vec![],
+            input_chan: None,
+            output: vec![],
             output_chan: None,
             relative_base: 0,
         };
@@ -70,19 +81,19 @@ impl Computer {
 
     pub fn get_args(&self, ip: usize) -> [isize; 4] {
         let mut ans: [isize; 4] = Default::default();
-        for i in 0..4 {
-            ans[i] = self.abs_load((ip + i) as isize);
+        for (i, a) in ans.iter_mut().enumerate() {
+            *a = self.abs_load((ip + i) as isize);
         }
         ans
     }
-    pub fn get_output(&self) -> isize {
-        self.last_output
+    pub fn get_last_output(&self) -> isize {
+        *self.get_output().last().unwrap()
+    }
+    pub fn get_output(&self) -> &[isize] {
+        &self.output
     }
     pub fn with_input(&mut self, x: isize) -> &mut Self {
-        match &mut self.input {
-            InputMode::List(l) => l.push(x),
-            InputMode::Channel(_) => unimplemented!(),
-        }
+        self.fixed_input.push(x);
         self
     }
     pub fn connect_output_from(&mut self, other: &mut Self, initial_input: &[isize]) -> &mut Self {
@@ -94,7 +105,7 @@ impl Computer {
         self.with_chan_input(rx)
     }
     pub fn with_chan_input(&mut self, x: Receiver<isize>) -> &mut Self {
-        self.input = InputMode::Channel(x);
+        self.input_chan = Some(x);
         self
     }
     pub fn with_chan_output(&mut self, x: Sender<isize>) -> &mut Self {
@@ -122,13 +133,13 @@ impl Computer {
     }
     pub fn rel_load(&self, offset: isize) -> isize {
         let a = self.abs_load(self.relative_base + offset);
-        /*println!(
+        info!(
             "RELLOAD {} + {} ({}) = {}",
             self.relative_base,
             offset,
             self.relative_base + offset,
             a
-        );*/
+        );
         a
     }
     pub fn rel_offset(&self, offset: isize) -> isize {
@@ -141,7 +152,7 @@ impl Computer {
         self.abs_store(self.instruction_pointer + offset, value)
     }
     pub fn abs_store(&mut self, offset: isize, value: isize) {
-        //println!("STORE @{} = {}", offset, value);
+        info!("STORE @{} = {}", offset, value);
         *self.memory.entry(offset).or_insert(0) = value;
     }
     pub fn inc_ip(&mut self, offset: isize) {
@@ -186,7 +197,7 @@ impl Op {
                 Arg::new(m[3], ParameterMode::try_from(op3).ok()?),
             ],
         });
-        //println!("E: {}\n", o.unwrap());
+        info!("E: {}\n", o.unwrap());
         o
     }
     pub fn from_mem_slice(m: &[isize; 4]) -> Op {
@@ -202,19 +213,22 @@ impl Op {
             OpCode::LessThan => c.abs_store(ps[2].ptr(c), (ps[0].get(c) < ps[1].get(c)).into()),
             OpCode::Equals => c.abs_store(ps[2].ptr(c), (ps[0].get(c) == ps[1].get(c)).into()),
             OpCode::Input => {
-                info!(target: "IO", "{} INP WAIT", c.name);
-                let i = match &mut c.input {
-                    InputMode::List(x) => x.remove(0),
-                    InputMode::Channel(r) => r.recv().expect("No value on receiver"),
+                let i = if c.fixed_input.is_empty() {
+                    c.fixed_input.remove(0)
+                } else if let Some(r) = &c.input_chan {
+                    info!(target: "IO", "{} INP WAIT", c.name);
+                    r.recv().expect("No value on receiver")
+                } else {
+                    panic!("No input")
                 };
                 info!(target: "IO", "{} INP --> {}", c.name, i);
-                //println!("INP --> {}, {:?}", i, ps);
+                info!("INP --> {}, {:?}", i, ps);
                 c.abs_store(ps[0].ptr(c), i);
             }
             OpCode::Output => {
                 let o = ps[0].get(c);
-                //println!("OUT: {}", o);
-                c.last_output = o;
+                info!("OUT: {}", o);
+                c.output.push(o);
                 if let Some(ch) = &c.output_chan {
                     info!(target: "IO", "{} OUT <-- {}", c.name, o);
                     ch.send(o).expect("Could not send");
@@ -228,7 +242,7 @@ impl Op {
             }
             OpCode::MoveRelativeBase => {
                 c.relative_base += ps[0].get(c);
-                //println!("RELBASE NOW {}", c.relative_base);
+                info!("RELBASE NOW {}", c.relative_base);
             }
             OpCode::Halt => {
                 c.state = ComputerState::HALTED;
@@ -239,7 +253,7 @@ impl Op {
         if do_ip_inc {
             c.inc_ip((1 + op_count).try_into().unwrap());
         }
-        //println!("IP = {}", c.instruction_pointer);
+        info!("IP = {}", c.instruction_pointer);
     }
 }
 impl fmt::Display for Op {

@@ -1,6 +1,5 @@
 mod computer;
 mod enums;
-mod inputmode;
 mod oparg;
 mod opcode;
 
