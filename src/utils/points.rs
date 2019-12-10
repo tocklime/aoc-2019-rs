@@ -122,19 +122,9 @@ pub struct PolarCoord {
 }
 impl PolarCoord {
     pub fn from_point(p: Point) -> PolarCoord {
-        let rad = (p.size_squared() as f64).sqrt();
-        let theta = (p.0 as f64 / rad).acos() + if p.1 < 0 { PI } else { 0.0 };
-        if theta.is_nan() {
-            panic!(
-                "NAN Theta with r: {} x: {}, div: {}",
-                rad,
-                p.0,
-                p.0 as f64 / rad
-            );
-        }
         PolarCoord {
-            r: rad,
-            theta: theta,
+            r: (p.size_squared() as f64).sqrt(),
+            theta: (p.0 as f64).atan2(p.1 as f64),
         }
     }
     pub fn simplify(self) -> PolarCoord {

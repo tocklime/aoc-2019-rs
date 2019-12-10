@@ -3,9 +3,11 @@ use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::f64::consts::FRAC_PI_2;
 
-type Prob = HashSet<Point>;
+// map of point to map of direction to list of (distance,point) tuples (in ascending order of distance)
+type AsteroidSet = HashSet<Point>;
+type Analysed = HashMap<Point, HashMap<Point, BinaryHeap<Reverse<(isize, Point)>>>>;
 #[aoc_generator(day10)]
-pub fn gen(input: &str) -> Prob {
+pub fn gen(input: &str) -> AsteroidSet {
     input
         .lines()
         .enumerate()
@@ -17,56 +19,76 @@ pub fn gen(input: &str) -> Prob {
         })
         .collect()
 }
+fn analyse(input: &AsteroidSet) -> Analysed {
+    input
+        .iter()
+        .map(|&p| {
+            (
+                p,
+                input
+                    .iter()
+                    .filter(|&&x| x != p)
+                    .fold(HashMap::new(), |mut hm, &other_p| {
+                        let rel = p - other_p;
+                        hm.entry(rel.simplest_direction())
+                            .or_insert(BinaryHeap::new())
+                            .push(Reverse((rel.size_squared(), other_p)));
+                        hm
+                    }),
+            )
+        })
+        .collect()
+}
 
 #[aoc(day10, part1)]
-pub fn p1a(input: &Prob) -> usize {
+pub fn p1a(input: &AsteroidSet) -> usize {
     get_best_station(input).0
 }
-pub fn get_best_station(input: &Prob) -> (usize, Point) {
-    let mut map: HashMap<Point, HashSet<Point>> = HashMap::new();
-    for &p in input.iter() {
-        let mut seen: HashSet<Point> = HashSet::new();
-        for &other_p in input.iter().filter(|&&x| x != p) {
-            if seen.insert((other_p - p).simplest_direction()) {
-                map.entry(p).or_default().insert(other_p);
-            }
-        }
-    }
-    let (&k, v) = map.iter().max_by_key(|(_, v)| v.len()).unwrap();
+pub fn get_best_station(input: &AsteroidSet) -> (usize, Point) {
+    let a = analyse(input);
+    let (&k, v) = a.iter().max_by_key(|x| x.1.len()).unwrap();
     (v.len(), k)
 }
 
 #[aoc(day10, part2)]
-pub fn p2a(input: &Prob) -> isize {
+pub fn p2a(input: &AsteroidSet) -> isize {
     p2(input, get_best_station(input).1, 200)
 }
 
-pub fn p2(input: &Prob, station: Point, nth: usize) -> isize {
-    let mut map: HashMap<Point, BinaryHeap<Reverse<(isize, Point)>>> = HashMap::new();
-    for &p in input.iter().filter(|&&x| x != station) {
+pub fn p2(input: &AsteroidSet, station: Point, nth: usize) -> isize {
+    /*let mut map: HashMap<Point, BinaryHeap<Reverse<(isize, Point)>>> = HashMap::new();
+     for &p in input.iter().filter(|&&x| x != station) {
         let o = p - station;
         map.entry(o.simplest_direction())
             .or_insert(BinaryHeap::new())
             .push(Reverse((o.size_squared(), p)));
     }
-    let mut as_list: Vec<_> = map.iter().map(|(p, i)| (*p, i.clone())).collect();
     as_list.sort_by(|&(a, _), &(b, _)| {
         let apc = PolarCoord::from_point(a).rotate(FRAC_PI_2);
         let bpc = PolarCoord::from_point(b).rotate(FRAC_PI_2);
         bpc.theta.partial_cmp(&apc.theta).unwrap()
+    }); */
+    println!("{:?}", input);
+    let mut analysis = analyse(input);
+    let st = analysis.get_mut(&station).unwrap();
+    let mut dir_list: Vec<_> = st.keys().cloned().collect();
+    dir_list.sort_by(|&a, &b| {
+        let apc = PolarCoord::from_point(a); //.rotate(FRAC_PI_2);
+        let bpc = PolarCoord::from_point(b); //.rotate(FRAC_PI_2);
+        bpc.theta.partial_cmp(&apc.theta).unwrap()
     });
     let mut list_ix = 0;
     let mut order = Vec::new();
-    while !as_list.is_empty() {
-        list_ix = list_ix % as_list.len();
-        let heap = &mut as_list[list_ix].1;
+    while !dir_list.is_empty() {
+        list_ix = list_ix % dir_list.len();
+        let heap = &mut st.get_mut(&dir_list[list_ix]).unwrap();
         match heap.pop() {
             Some(Reverse((_, x))) => {
                 order.push(x);
                 list_ix += 1;
             }
             None => {
-                as_list.remove(list_ix);
+                dir_list.remove(list_ix);
             }
         }
     }
@@ -87,7 +109,7 @@ pub fn tests() {
 
 #[test]
 pub fn t2() {
-    let e = ".#....#####...#..\n##...##.#####..##\n##...#...#.#####.\n..#.....X...###..\n..#.#.....#....##";
+    let e = ".#....#####...#..\n##...##.#####..##\n##...#...#.#####.\n..#.....#...###..\n..#.#.....#....##";
     assert_eq!(p2(&gen(&e), Point(8, 3), 1), 801);
 }
 
