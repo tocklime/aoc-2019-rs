@@ -1,6 +1,6 @@
+use num::integer::gcd;
 use std::cmp::{max, min};
-use std::ops::{Add, AddAssign, Mul, Sub};
-
+use std::ops::{Add, AddAssign, Div, Mul, Sub};
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Dir {
     U,
@@ -71,6 +71,12 @@ impl Sub for Point {
         Point(self.0 - rhs.0, self.1 - rhs.1)
     }
 }
+impl Div<isize> for Point {
+    type Output = Self;
+    fn div(self, rhs: isize) -> Self {
+        Point(self.0 / rhs, self.1 / rhs)
+    }
+}
 impl AddAssign for Point {
     fn add_assign(&mut self, other: Self) {
         self.0 += other.0;
@@ -78,11 +84,34 @@ impl AddAssign for Point {
     }
 }
 impl Point {
+    pub fn origin() -> Point {
+        Point(0, 0)
+    }
     pub fn manhattan_from_origin(self) -> usize {
         (self.0.abs() + self.1.abs()) as usize
     }
     pub fn manhattan(self, other: Self) -> usize {
         ((self.0 - other.0).abs() + (self.1 - other.1).abs()) as usize
+    }
+    pub fn gcd(self) -> isize {
+        gcd(self.0, self.1)
+    }
+    pub fn size_squared(self) -> isize {
+        self.0 * self.0 + self.1 + self.1
+    }
+    pub fn simplest_direction(self) -> Point {
+        self / self.gcd()
+    }
+    pub fn quadrant_clockwise(self) -> usize {
+        match (self.0 >= 0, self.1 >= 0) {
+            (true, false) => 1,
+            (true, true) => 2,
+            (false, true) => 3,
+            (false, false) => 4,
+        }
+    }
+    pub fn gradient(self) -> f64 {
+        self.1 as f64 / self.0 as f64
     }
 }
 

@@ -1,11 +1,11 @@
 use super::utils::points::Point;
-use num::integer::gcd;
-use std::cmp::{max, Ordering, Reverse};
+use std::cmp::{Ordering, Reverse};
 use std::collections::{BinaryHeap, HashMap, HashSet};
 
-#[aoc(day10, part1)]
-pub fn p1(input: &str) -> usize {
-    let set: HashSet<Point> = input
+type Prob = HashSet<Point>;
+#[aoc_generator(day10)]
+pub fn gen(input: &str) -> Prob {
+    input
         .lines()
         .enumerate()
         .flat_map(move |(y, l)| {
@@ -14,77 +14,46 @@ pub fn p1(input: &str) -> usize {
                 _ => None,
             })
         })
-        .collect();
-    let mut best = 0;
+        .collect()
+}
+
+#[aoc(day10, part1)]
+pub fn p1a(input: &Prob) -> usize {
+    p1(input).0
+}
+pub fn p1(input: &Prob) -> (usize, Point) {
     let mut map: HashMap<Point, HashSet<Point>> = HashMap::new();
-    for p in set.iter() {
-        let mut seen: HashSet<(isize, isize)> = HashSet::new();
-        for other_p in set.iter() {
-            if p == other_p {
-                continue;
-            }
-            let y = other_p.1 - p.1;
-            let x = other_p.0 - p.0;
-            let g = gcd(x, y);
-            if seen.insert((x / g, y / g)) {
-                map.entry(p.clone()).or_default().insert(other_p.clone());
+    for &p in input.iter() {
+        let mut seen: HashSet<Point> = HashSet::new();
+        for &other_p in input.iter().filter(|&&x| x != p) {
+            if seen.insert((other_p - p).simplest_direction()) {
+                map.entry(p).or_default().insert(other_p);
             }
         }
-
-        best = max(best, seen.len());
     }
-    let (k, v) = map.iter().max_by_key(|(k, v)| v.len()).unwrap();
-    println!("Best is {:?}", k);
-    v.len()
+    let (&k, v) = map.iter().max_by_key(|(_, v)| v.len()).unwrap();
+    (v.len(), k)
 }
 
 #[aoc(day10, part2)]
-pub fn p2a(input: &str) -> isize {
-    p2(input, Point(17, 22))
+pub fn p2a(input: &Prob) -> isize {
+    p2(input, p1(input).1)
 }
-pub fn p2(input: &str, station: Point) -> isize {
-    let set: HashSet<Point> = input
-        .lines()
-        .enumerate()
-        .flat_map(move |(y, l)| {
-            l.chars().enumerate().filter_map(move |(x, c)| match c {
-                '#' => Some(Point(x as isize, y as isize)),
-                _ => None,
-            })
-        })
-        .collect();
-    let mut best = 0;
-    let mut map: HashMap<(isize, isize), BinaryHeap<Reverse<(isize, Point)>>> = HashMap::new();
-    for p in set.iter() {
-        let o = *p - station;
-        if o == Point(0, 0) {
-            continue;
-        }
-        let y = p.1 - station.1;
-        let x = p.0 - station.0;
-        let g = gcd(x, y);
-        map.entry((x / g, y / g))
+pub fn p2(input: &Prob, station: Point) -> isize {
+    let mut map: HashMap<Point, BinaryHeap<Reverse<(isize, Point)>>> = HashMap::new();
+    for &p in input.iter().filter(|&&x| x != station) {
+        let o = p - station;
+        map.entry(o.simplest_direction())
             .or_insert(BinaryHeap::new())
-            .push(Reverse((g, *p)));
+            .push(Reverse((o.size_squared(), p)));
     }
-
     let mut as_list: Vec<_> = map.iter().map(|(p, i)| (*p, i.clone())).collect();
     as_list.sort_by(|&(a, _), (b, _)| {
-        let q = match (a.0 >= 0, a.1 >= 0) {
-            (true, false) => 1,
-            (true, true) => 2,
-            (false, true) => 3,
-            (false, false) => 4,
-        };
-        let q2 = match (b.0 >= 0, b.1 >= 0) {
-            (true, false) => 1,
-            (true, true) => 2,
-            (false, true) => 3,
-            (false, false) => 4,
-        };
-        let a1 = a.0 as f64 / a.1 as f64;
-        let b1 = b.0 as f64 / b.1 as f64;
-        (q.cmp(&q2)).then(b1.partial_cmp(&a1).unwrap_or(Ordering::Equal))
+        (a.quadrant_clockwise().cmp(&b.quadrant_clockwise())).then(
+            a.gradient()
+                .partial_cmp(&b.gradient())
+                .unwrap_or(Ordering::Equal),
+        )
     });
     let mut c = 0;
     let mut list_ix = 0;
@@ -95,7 +64,7 @@ pub fn p2(input: &str, station: Point) -> isize {
         match heap.pop() {
             Some(Reverse((_, x))) => {
                 this = x;
-                println!("Zapped {} {:?}", c + 1, this);
+                //println!("Zapped {} {:?}", c + 1, this);
                 c += 1;
             }
             None => {
@@ -109,16 +78,19 @@ pub fn p2(input: &str, station: Point) -> isize {
 
 #[test]
 pub fn tests() {
-    assert_eq!(p1(".#..#\n.....\n#####\n....#\n...##"), 8);
-    assert_eq!(p1("......#.#.\n#..#.#....\n..#######.\n.#.#.###..\n.#..#.....\n..#....#.#\n#..#....#.\n.##.#..###\n##...#..#.\n.#....####\n"),33);
-    assert_eq!(p1("#.#...#.#.\n.###....#.\n.#....#...\n##.#.#.#.#\n....#.#.#.\n.##..###.#\n..#...##..\n..##....##\n......#...\n.####.###."),35);
-    assert_eq!(p1(".#..#..###\n####.###.#\n....###.#.\n..###.##.#\n##.##.#.#.\n....###..#\n..#.#..#.#\n#..#.#.###\n.##...##.#\n.....#.#..\n"),41);
+    assert_eq!(
+        p1(&gen(".#..#\n.....\n#####\n....#\n...##")),
+        (8, Point(3, 4))
+    );
+    assert_eq!(p1(&gen("......#.#.\n#..#.#....\n..#######.\n.#.#.###..\n.#..#.....\n..#....#.#\n#..#....#.\n.##.#..###\n##...#..#.\n.#....####\n")),(33,Point(5,8)));
+    assert_eq!(p1(&gen("#.#...#.#.\n.###....#.\n.#....#...\n##.#.#.#.#\n....#.#.#.\n.##..###.#\n..#...##..\n..##....##\n......#...\n.####.###.")),(35,Point(1,2)));
+    assert_eq!(p1(&gen(".#..#..###\n####.###.#\n....###.#.\n..###.##.#\n##.##.#.#.\n....###..#\n..#.#..#.#\n#..#.#.###\n.##...##.#\n.....#.#..\n")),(41, Point(6,3)));
 }
 
 #[test]
 pub fn t2() {
     let e = ".#....#####...#..\n##...##.#####..##\n##...#...#.#####.\n..#.....X...###..\n..#.#.....#....##";
-    p2(&e, Point(8, 3));
+    p2(&gen(&e), Point(8, 3));
 }
 
 /*           1111111
