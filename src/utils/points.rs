@@ -1,5 +1,6 @@
 use num::integer::gcd;
 use std::cmp::{max, min};
+use std::f64::consts::PI;
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Dir {
@@ -97,7 +98,7 @@ impl Point {
         gcd(self.0, self.1)
     }
     pub fn size_squared(self) -> isize {
-        self.0 * self.0 + self.1 + self.1
+        self.0 * self.0 + self.1 * self.1
     }
     pub fn simplest_direction(self) -> Point {
         self / self.gcd()
@@ -112,6 +113,46 @@ impl Point {
     }
     pub fn gradient(self) -> f64 {
         self.1 as f64 / self.0 as f64
+    }
+}
+#[derive(Debug)]
+pub struct PolarCoord {
+    pub r: f64,
+    pub theta: f64,
+}
+impl PolarCoord {
+    pub fn from_point(p: Point) -> PolarCoord {
+        let rad = (p.size_squared() as f64).sqrt();
+        let theta = (p.0 as f64 / rad).acos() + if p.1 < 0 { PI } else { 0.0 };
+        if theta.is_nan() {
+            panic!(
+                "NAN Theta with r: {} x: {}, div: {}",
+                rad,
+                p.0,
+                p.0 as f64 / rad
+            );
+        }
+        PolarCoord {
+            r: rad,
+            theta: theta,
+        }
+    }
+    pub fn simplify(self) -> PolarCoord {
+        PolarCoord {
+            r: self.r,
+            theta: if self.theta > 2. * PI {
+                self.theta % (2. * PI)
+            } else {
+                self.theta
+            },
+        }
+    }
+    pub fn rotate(self, rad: f64) -> PolarCoord {
+        PolarCoord {
+            r: self.r,
+            theta: self.theta + rad,
+        }
+        .simplify()
     }
 }
 

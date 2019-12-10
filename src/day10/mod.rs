@@ -1,6 +1,7 @@
-use super::utils::points::Point;
-use std::cmp::{Ordering, Reverse};
+use super::utils::points::{Point, PolarCoord};
+use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet};
+use std::f64::consts::FRAC_PI_2;
 
 type Prob = HashSet<Point>;
 #[aoc_generator(day10)]
@@ -19,9 +20,9 @@ pub fn gen(input: &str) -> Prob {
 
 #[aoc(day10, part1)]
 pub fn p1a(input: &Prob) -> usize {
-    p1(input).0
+    get_best_station(input).0
 }
-pub fn p1(input: &Prob) -> (usize, Point) {
+pub fn get_best_station(input: &Prob) -> (usize, Point) {
     let mut map: HashMap<Point, HashSet<Point>> = HashMap::new();
     for &p in input.iter() {
         let mut seen: HashSet<Point> = HashSet::new();
@@ -37,9 +38,10 @@ pub fn p1(input: &Prob) -> (usize, Point) {
 
 #[aoc(day10, part2)]
 pub fn p2a(input: &Prob) -> isize {
-    p2(input, p1(input).1)
+    p2(input, get_best_station(input).1, 200)
 }
-pub fn p2(input: &Prob, station: Point) -> isize {
+
+pub fn p2(input: &Prob, station: Point, nth: usize) -> isize {
     let mut map: HashMap<Point, BinaryHeap<Reverse<(isize, Point)>>> = HashMap::new();
     for &p in input.iter().filter(|&&x| x != station) {
         let o = p - station;
@@ -48,49 +50,45 @@ pub fn p2(input: &Prob, station: Point) -> isize {
             .push(Reverse((o.size_squared(), p)));
     }
     let mut as_list: Vec<_> = map.iter().map(|(p, i)| (*p, i.clone())).collect();
-    as_list.sort_by(|&(a, _), (b, _)| {
-        (a.quadrant_clockwise().cmp(&b.quadrant_clockwise())).then(
-            a.gradient()
-                .partial_cmp(&b.gradient())
-                .unwrap_or(Ordering::Equal),
-        )
+    as_list.sort_by(|&(a, _), &(b, _)| {
+        let apc = PolarCoord::from_point(a).rotate(FRAC_PI_2);
+        let bpc = PolarCoord::from_point(b).rotate(FRAC_PI_2);
+        bpc.theta.partial_cmp(&apc.theta).unwrap()
     });
-    let mut c = 0;
     let mut list_ix = 0;
-    let mut this = Point(0, 0);
-    let mut non_empty_lists = as_list.len();
-    while c < 200 && non_empty_lists > 0 {
+    let mut order = Vec::new();
+    while !as_list.is_empty() {
+        list_ix = list_ix % as_list.len();
         let heap = &mut as_list[list_ix].1;
         match heap.pop() {
             Some(Reverse((_, x))) => {
-                this = x;
-                //println!("Zapped {} {:?}", c + 1, this);
-                c += 1;
+                order.push(x);
+                list_ix += 1;
             }
             None => {
-                non_empty_lists -= 1;
+                as_list.remove(list_ix);
             }
         }
-        list_ix = (list_ix + 1) % as_list.len();
     }
-    this.0 * 100 + this.1
+    let x = order[nth - 1];
+    x.0 * 100 + x.1
 }
 
 #[test]
 pub fn tests() {
     assert_eq!(
-        p1(&gen(".#..#\n.....\n#####\n....#\n...##")),
+        get_best_station(&gen(".#..#\n.....\n#####\n....#\n...##")),
         (8, Point(3, 4))
     );
-    assert_eq!(p1(&gen("......#.#.\n#..#.#....\n..#######.\n.#.#.###..\n.#..#.....\n..#....#.#\n#..#....#.\n.##.#..###\n##...#..#.\n.#....####\n")),(33,Point(5,8)));
-    assert_eq!(p1(&gen("#.#...#.#.\n.###....#.\n.#....#...\n##.#.#.#.#\n....#.#.#.\n.##..###.#\n..#...##..\n..##....##\n......#...\n.####.###.")),(35,Point(1,2)));
-    assert_eq!(p1(&gen(".#..#..###\n####.###.#\n....###.#.\n..###.##.#\n##.##.#.#.\n....###..#\n..#.#..#.#\n#..#.#.###\n.##...##.#\n.....#.#..\n")),(41, Point(6,3)));
+    assert_eq!(get_best_station(&gen("......#.#.\n#..#.#....\n..#######.\n.#.#.###..\n.#..#.....\n..#....#.#\n#..#....#.\n.##.#..###\n##...#..#.\n.#....####\n")),(33,Point(5,8)));
+    assert_eq!(get_best_station(&gen("#.#...#.#.\n.###....#.\n.#....#...\n##.#.#.#.#\n....#.#.#.\n.##..###.#\n..#...##..\n..##....##\n......#...\n.####.###.")),(35,Point(1,2)));
+    assert_eq!(get_best_station(&gen(".#..#..###\n####.###.#\n....###.#.\n..###.##.#\n##.##.#.#.\n....###..#\n..#.#..#.#\n#..#.#.###\n.##...##.#\n.....#.#..\n")),(41, Point(6,3)));
 }
 
 #[test]
 pub fn t2() {
     let e = ".#....#####...#..\n##...##.#####..##\n##...#...#.#####.\n..#.....X...###..\n..#.#.....#....##";
-    p2(&gen(&e), Point(8, 3));
+    assert_eq!(p2(&gen(&e), Point(8, 3), 1), 801);
 }
 
 /*           1111111
