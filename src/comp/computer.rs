@@ -1,9 +1,9 @@
+use super::compmem::CompMem;
 use log::info;
 use std::cmp;
 use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
-use std::num::ParseIntError;
 use std::str::FromStr;
 use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
@@ -12,29 +12,34 @@ use super::enums::*;
 use super::oparg::Arg;
 use super::opcode::OpCode;
 #[derive(Debug)]
-pub struct Computer {
+pub struct Computer<MemType = i32> {
     name: String,
-    initial_mem: Vec<isize>,
-    memory: HashMap<isize, isize>,
+    initial_mem: Vec<MemType>,
+    memory: HashMap<isize, MemType>,
     instruction_pointer: isize,
     state: ComputerState,
-    fixed_input: Vec<isize>,
-    input_chan: Option<Receiver<isize>>,
-    output: Vec<isize>,
-    output_chan: Option<Sender<isize>>,
+    fixed_input: Vec<MemType>,
+    input_chan: Option<Receiver<MemType>>,
+    output: Vec<MemType>,
+    output_chan: Option<Sender<MemType>>,
     relative_base: isize,
 }
 
-impl FromStr for Computer {
-    type Err = ParseIntError;
-
+impl<MemType> FromStr for Computer<MemType>
+where
+    MemType: FromStr + CompMem,
+{
+    type Err = <MemType as std::str::FromStr>::Err;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let is: Result<Vec<_>, _> = s.split(',').map(|x| x.parse::<isize>()).collect();
+        let is: Result<Vec<_>, _> = s.split(',').map(|x| x.parse::<MemType>()).collect();
         Ok(Computer::new(&is?))
     }
 }
-impl Computer {
-    pub fn new(initial_mem: &[isize]) -> Self {
+impl<MemType> Computer<MemType>
+where
+    MemType: CompMem,
+{
+    pub fn new(initial_mem: &[MemType]) -> Self {
         let mut c = Computer {
             initial_mem: Vec::from(initial_mem),
             name: String::from("COMP"),
@@ -79,36 +84,40 @@ impl Computer {
         output
     }
 
-    pub fn get_args(&self, ip: usize) -> [isize; 4] {
-        let mut ans: [isize; 4] = Default::default();
+    pub fn get_args(&self, ip: usize) -> [MemType; 4] {
+        let mut ans: [MemType; 4] = Default::default();
         for (i, a) in ans.iter_mut().enumerate() {
             *a = self.abs_load((ip + i) as isize);
         }
         ans
     }
-    pub fn get_last_output(&self) -> isize {
+    pub fn get_last_output(&self) -> MemType {
         *self.get_output().last().unwrap()
     }
-    pub fn get_output(&self) -> &[isize] {
+    pub fn get_output(&self) -> &[MemType] {
         &self.output
     }
-    pub fn with_input(&mut self, x: isize) -> &mut Self {
+    pub fn with_input(&mut self, x: MemType) -> &mut Self {
         self.fixed_input.push(x);
         self
     }
-    pub fn connect_output_from(&mut self, other: &mut Self, initial_input: &[isize]) -> &mut Self {
-        let (tx, rx) = mpsc::channel::<isize>();
+    pub fn connect_output_from(
+        &mut self,
+        other: &mut Self,
+        initial_input: &[MemType],
+    ) -> &mut Self {
+        let (tx, rx) = mpsc::channel::<MemType>();
         for &v in initial_input {
             tx.send(v).expect("Failed to send initial value");
         }
         other.with_chan_output(tx);
         self.with_chan_input(rx)
     }
-    pub fn with_chan_input(&mut self, x: Receiver<isize>) -> &mut Self {
+    pub fn with_chan_input(&mut self, x: Receiver<MemType>) -> &mut Self {
         self.input_chan = Some(x);
         self
     }
-    pub fn with_chan_output(&mut self, x: Sender<isize>) -> &mut Self {
+    pub fn with_chan_output(&mut self, x: Sender<MemType>) -> &mut Self {
         self.output_chan = Some(x);
         self
     }
@@ -120,20 +129,20 @@ impl Computer {
         self.fixed_input = vec![];
         self
     }
-    pub fn current_op_with_args(&self) -> Op {
+    pub fn current_op_with_args(&self) -> Op<MemType> {
         let ms = self.get_args(self.instruction_pointer as usize);
         Op::from_mem_slice(&ms)
     }
-    pub fn abs_load(&self, pos: isize) -> isize {
-        *self.memory.get(&pos).unwrap_or_else(|| {
+    pub fn abs_load(&self, pos: isize) -> MemType {
+        self.memory.get(&pos).cloned().unwrap_or_else(|| {
             if pos >= 0 && (pos as usize) < self.initial_mem.len() {
-                &self.initial_mem[pos as usize]
+                self.initial_mem[pos as usize]
             } else {
-                &0
+                Default::default()
             }
         })
     }
-    pub fn rel_load(&self, offset: isize) -> isize {
+    pub fn rel_load(&self, offset: isize) -> MemType {
         let a = self.abs_load(self.relative_base + offset);
         info!(
             "RELLOAD {} + {} ({}) = {}",
@@ -147,15 +156,15 @@ impl Computer {
     pub fn rel_offset(&self, offset: isize) -> isize {
         self.relative_base + offset
     }
-    pub fn load(&self, offset: isize) -> isize {
+    pub fn load(&self, offset: isize) -> MemType {
         self.abs_load(self.instruction_pointer + offset)
     }
-    pub fn store(&mut self, offset: isize, value: isize) {
+    pub fn store(&mut self, offset: isize, value: MemType) {
         self.abs_store(self.instruction_pointer + offset, value)
     }
-    pub fn abs_store(&mut self, offset: isize, value: isize) {
+    pub fn abs_store(&mut self, offset: isize, value: MemType) {
         info!("STORE @{} = {}", offset, value);
-        *self.memory.entry(offset).or_insert(0) = value;
+        *self.memory.entry(offset).or_insert(Default::default()) = value;
     }
     pub fn inc_ip(&mut self, offset: isize) {
         self.instruction_pointer += offset;
@@ -180,19 +189,23 @@ impl Computer {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Op {
+pub struct Op<MemType> {
     op: OpCode,
-    args: [Arg; 3],
+    args: [Arg<MemType>; 3],
 }
 
-impl Op {
-    pub fn try_from_mem_slice(m: &[isize; 4]) -> Option<Op> {
-        let ps = m[0] / 100;
+impl<MemType> Op<MemType>
+where
+    MemType: CompMem,
+{
+    pub fn try_from_mem_slice(m: &[MemType; 4]) -> Option<Self> {
+        let as_int = m[0].try_into().ok()?;
+        let ps = as_int / 100;
         let op1 = ps % 10;
         let op2 = (ps / 10) % 10;
         let op3 = (ps / 100) % 10;
         let o = Some(Op {
-            op: OpCode::try_from(m[0] % 100).ok()?,
+            op: OpCode::try_from(as_int % 100).ok()?,
             args: [
                 Arg::new(m[1], ParameterMode::try_from(op1).ok()?),
                 Arg::new(m[2], ParameterMode::try_from(op2).ok()?),
@@ -202,10 +215,10 @@ impl Op {
         info!("E: {}\n", o.unwrap());
         o
     }
-    pub fn from_mem_slice(m: &[isize; 4]) -> Op {
+    pub fn from_mem_slice(m: &[MemType; 4]) -> Op<MemType> {
         Op::try_from_mem_slice(m).unwrap()
     }
-    pub fn execute(&self, c: &mut Computer) {
+    pub fn execute(&self, c: &mut Computer<MemType>) {
         let op_count = self.op.arg_count();
         let ps = self.args;
         let mut do_ip_inc = true;
@@ -237,13 +250,13 @@ impl Op {
                 }
             }
             OpCode::JumpIfTrue | OpCode::JumpIfFalse => {
-                if (ps[0].get(c) != 0) == (self.op == OpCode::JumpIfTrue) {
-                    c.instruction_pointer = ps[1].get(c);
+                if (ps[0].get(c) != Default::default()) == (self.op == OpCode::JumpIfTrue) {
+                    c.instruction_pointer = ps[1].get(c).as_isize();
                     do_ip_inc = false;
                 }
             }
             OpCode::MoveRelativeBase => {
-                c.relative_base += ps[0].get(c);
+                c.relative_base += ps[0].get(c).as_isize();
                 info!("RELBASE NOW {}", c.relative_base);
             }
             OpCode::Halt => {
@@ -258,7 +271,10 @@ impl Op {
         info!("IP = {}", c.instruction_pointer);
     }
 }
-impl fmt::Display for Op {
+impl<MemType> fmt::Display for Op<MemType>
+where
+    MemType: fmt::Display,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{: <20}", self.op)?;
         for i in 0..self.op.arg_count() {

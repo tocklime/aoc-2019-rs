@@ -1,3 +1,4 @@
+mod compmem;
 mod computer;
 mod enums;
 mod oparg;
