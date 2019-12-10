@@ -1,5 +1,5 @@
 use std::cmp::{max, min};
-use std::ops::{Add, AddAssign, Mul};
+use std::ops::{Add, AddAssign, Mul, Sub};
 
 #[derive(PartialEq, Debug, Clone, Copy)]
 pub enum Dir {
@@ -40,9 +40,13 @@ impl Dir {
         self == Dir::R || self == Dir::L
     }
 }
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct Point(pub isize, pub isize);
-
+/* impl Ord for Point {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.0
+    }
+} */
 impl Mul<isize> for Point {
     type Output = Self;
     fn mul(self, rhs: isize) -> Self {
@@ -59,6 +63,12 @@ impl Add for Point {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         Point(self.0 + rhs.0, self.1 + rhs.1)
+    }
+}
+impl Sub for Point {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self {
+        Point(self.0 - rhs.0, self.1 - rhs.1)
     }
 }
 impl AddAssign for Point {
