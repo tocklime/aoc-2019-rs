@@ -3,9 +3,7 @@ use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::f64::consts::FRAC_PI_2;
 
-// map of point to map of direction to list of (distance,point) tuples (in ascending order of distance)
 type AsteroidSet = HashSet<Point>;
-type Analysed = HashMap<Point, HashMap<Point, BinaryHeap<Reverse<(isize, Point)>>>>;
 #[aoc_generator(day10)]
 pub fn gen(input: &str) -> AsteroidSet {
     input
@@ -19,35 +17,27 @@ pub fn gen(input: &str) -> AsteroidSet {
         })
         .collect()
 }
-fn analyse(input: &AsteroidSet) -> Analysed {
-    input
-        .iter()
-        .map(|&p| {
-            (
-                p,
-                input
-                    .iter()
-                    .filter(|&&x| x != p)
-                    .fold(HashMap::new(), |mut hm, &other_p| {
-                        let rel = p - other_p;
-                        hm.entry(rel.simplest_direction())
-                            .or_insert(BinaryHeap::new())
-                            .push(Reverse((rel.size_squared(), other_p)));
-                        hm
-                    }),
-            )
-        })
-        .collect()
-}
 
 #[aoc(day10, part1)]
 pub fn p1a(input: &AsteroidSet) -> usize {
     get_best_station(input).0
 }
 pub fn get_best_station(input: &AsteroidSet) -> (usize, Point) {
-    let a = analyse(input);
-    let (&k, v) = a.iter().max_by_key(|x| x.1.len()).unwrap();
-    (v.len(), k)
+    input
+        .iter()
+        .map(|&p| {
+            (
+                input
+                    .iter()
+                    .filter(|&&x| x != p)
+                    .map(|&x| (x - p).simplest_direction())
+                    .collect::<HashSet<_>>()
+                    .len(),
+                p,
+            )
+        })
+        .max_by_key(|x| x.0)
+        .unwrap()
 }
 
 #[aoc(day10, part2)]
@@ -56,32 +46,27 @@ pub fn p2a(input: &AsteroidSet) -> isize {
 }
 
 pub fn p2(input: &AsteroidSet, station: Point, nth: usize) -> isize {
-    /*let mut map: HashMap<Point, BinaryHeap<Reverse<(isize, Point)>>> = HashMap::new();
-     for &p in input.iter().filter(|&&x| x != station) {
-        let o = p - station;
-        map.entry(o.simplest_direction())
-            .or_insert(BinaryHeap::new())
-            .push(Reverse((o.size_squared(), p)));
-    }
-    as_list.sort_by(|&(a, _), &(b, _)| {
+    let mut map: HashMap<Point, BinaryHeap<Reverse<(isize, Point)>>> = input
+        .iter()
+        .filter(|&&x| x != station)
+        .fold(HashMap::new(), |mut hm, &p| {
+            let o = p - station;
+            hm.entry(o.simplest_direction())
+                .or_insert(BinaryHeap::new())
+                .push(Reverse((o.size_squared(), p)));
+            hm
+        });
+    let mut dir_list: Vec<_> = map.keys().cloned().collect();
+    dir_list.sort_by(|&a, &b| {
         let apc = PolarCoord::from_point(a).rotate(FRAC_PI_2);
         let bpc = PolarCoord::from_point(b).rotate(FRAC_PI_2);
-        bpc.theta.partial_cmp(&apc.theta).unwrap()
-    }); */
-    println!("{:?}", input);
-    let mut analysis = analyse(input);
-    let st = analysis.get_mut(&station).unwrap();
-    let mut dir_list: Vec<_> = st.keys().cloned().collect();
-    dir_list.sort_by(|&a, &b| {
-        let apc = PolarCoord::from_point(a); //.rotate(FRAC_PI_2);
-        let bpc = PolarCoord::from_point(b); //.rotate(FRAC_PI_2);
         bpc.theta.partial_cmp(&apc.theta).unwrap()
     });
     let mut list_ix = 0;
     let mut order = Vec::new();
     while !dir_list.is_empty() {
         list_ix = list_ix % dir_list.len();
-        let heap = &mut st.get_mut(&dir_list[list_ix]).unwrap();
+        let heap = &mut map.get_mut(&dir_list[list_ix]).unwrap();
         match heap.pop() {
             Some(Reverse((_, x))) => {
                 order.push(x);
