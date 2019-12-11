@@ -26,7 +26,11 @@ pub fn find(input: &[usize], group_check: fn(usize) -> bool) -> usize {
 
 #[aoc_generator(day4)]
 pub fn gen(input: &str) -> Vec<usize> {
-    input.split('-').map(|x| x.parse().unwrap()).collect()
+    input
+        .trim()
+        .split('-')
+        .map(|x| x.parse().unwrap())
+        .collect()
 }
 #[aoc(day4, part1)]
 pub fn p1(input: &[usize]) -> usize {

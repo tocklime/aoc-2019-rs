@@ -19,6 +19,7 @@ fn conv(c: char) -> char {
 #[aoc(day8, part1)]
 pub fn p1(input: &str) -> usize {
     let fewest0 = input
+        .trim()
         .chars()
         .chunks(IM_SIZE)
         .into_iter()
@@ -29,7 +30,7 @@ pub fn p1(input: &str) -> usize {
 }
 #[aoc(day8, part2, forloop)]
 pub fn p2_forloop(input: &str) -> String {
-    let layers = input.chars().map(conv).chunks(IM_SIZE);
+    let layers = input.trim().chars().map(conv).chunks(IM_SIZE);
     let mut image = vec![vec!['X'; WIDTH]; HEIGHT];
     for l in layers.into_iter() {
         for (p, c) in l.enumerate() {
@@ -47,7 +48,7 @@ pub fn p2_forloop(input: &str) -> String {
 }
 #[aoc(day8, part2, transpose)]
 pub fn p2_transpose(input: &str) -> String {
-    let mut pixels: Vec<_> = input.chars().map(conv).collect();
+    let mut pixels: Vec<_> = input.trim().chars().map(conv).collect();
     let layer_count = pixels.len() / IM_SIZE;
     let mut scratch = vec!['X'; max(IM_SIZE, layer_count)];
     transpose_inplace(&mut pixels, &mut scratch, IM_SIZE, layer_count);
@@ -61,7 +62,7 @@ pub fn p2_transpose(input: &str) -> String {
 }
 #[aoc(day8, part2, steps)]
 pub fn p2_steps(input: &str) -> String {
-    let pixels: Vec<_> = input.chars().map(conv).collect();
+    let pixels: Vec<_> = input.trim().chars().map(conv).collect();
     (0..IM_SIZE)
         .map(|p| {
             pixels
