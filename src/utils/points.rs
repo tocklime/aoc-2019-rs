@@ -1,4 +1,5 @@
 use num::integer::gcd;
+use std::hash::BuildHasher;
 use num_enum::TryFromPrimitive;
 use std::cmp::{max, min};
 use std::convert::TryInto;
@@ -236,40 +237,27 @@ pub fn bb_tests() {
 }
 
 use std::collections::HashMap;
-pub fn point_map_bounding_box<T>(hm: &HashMap<Point, T>) -> Aabb {
+pub fn point_map_bounding_box<T, S : BuildHasher>(hm: &HashMap<Point, T, S>) -> Aabb {
     let a_point = hm.keys().nth(0).unwrap();
     hm.keys().fold(Aabb::new(*a_point), |bb, &k| bb.extend(k))
 }
-/* pub fn all_points_in_hashmap_bb<T: Default + Clone>(
-    hm: &HashMap<Point, T>,
-) -> impl Iterator<Item = T> + '_ {
-    point_map_bounding_box(hm)
-        .all_points()
-        .map(move |p| hm.get(&p).cloned().unwrap_or_default())
-} */
-pub fn point_hashmap_to_array<T: Default + Copy>(hm: &HashMap<Point, T>) -> Vec<Vec<T>> {
+pub fn point_hashmap_to_array<T: Default + Copy, S : BuildHasher>(hm: &HashMap<Point, T, S>) -> Vec<Vec<T>> {
     let bb = hm
         .keys()
         .fold(Aabb::new(Point::origin()), |bb, &k| bb.extend(k));
     let mut o: Vec<Vec<T>> = vec![vec![Default::default(); bb.width()]; bb.height()];
     let offset = bb.bottom_left;
-    for x in 0..bb.width() {
-        for y in 0..bb.height() {
-            let rel = Point(x as isize, y as isize) + offset;
-            if let Some(t) = hm.get(&rel) {
-                o[x][y] = *t;
-            } else {
-                o[x][y] = Default::default();
-            }
-        }
+    for p in bb.all_points() {
+        let rel = p + offset;
+        o[rel.1 as usize][rel.0 as usize] = hm.get(&p).cloned().unwrap_or_default();
     }
     o
 }
-pub fn render_char_map(m: &HashMap<Point, char>) -> String {
+pub fn render_char_map<S : BuildHasher>(m: &HashMap<Point, char, S>) -> String {
     let bb = crate::utils::points::point_map_bounding_box(&m);
     let v = bb.vec_with(|p| *m.get(&p).unwrap_or(&' '));
     v.iter()
-        .map(|l| "\n".to_string() + &l.into_iter().collect::<String>())
+        .map(|l| "\n".to_string() + &l.iter().collect::<String>())
         .rev() //looks upside down...
         .collect()
 }

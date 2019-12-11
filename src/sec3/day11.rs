@@ -18,13 +18,9 @@ pub fn robot(
     let mut d = Dir::U;
     painted_panels.insert(p, c);
     loop {
-        match output.send((painted_panels.get(&p) == Some(&WHITE)).into()) {
-            Err(_) => {
-                println!("EOF sending colour");
+            if output.send((painted_panels.get(&p) == Some(&WHITE)).into()).is_err() {
                 break;
             }
-            _ => {}
-        }
         match input.recv() {
             Ok(0) => painted_panels.insert(p, BLACK),
             Ok(1) => painted_panels.insert(p, WHITE),

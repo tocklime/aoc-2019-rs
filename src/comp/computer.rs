@@ -31,7 +31,7 @@ where
 {
     type Err = <MemType as std::str::FromStr>::Err;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let is: Result<Vec<_>, _> = s.split(',').map(|x| x.parse::<MemType>()).collect();
+        let is: Result<Vec<_>, _> = s.trim().split(',').map(|x| x.parse::<MemType>()).collect();
         Ok(Computer::new(&is?))
     }
 }
@@ -164,7 +164,7 @@ where
     }
     pub fn abs_store(&mut self, offset: isize, value: MemType) {
         info!("STORE @{} = {}", offset, value);
-        *self.memory.entry(offset).or_insert(Default::default()) = value;
+        *self.memory.entry(offset).or_insert_with(Default::default) = value;
     }
     pub fn inc_ip(&mut self, offset: isize) {
         self.instruction_pointer += offset;
