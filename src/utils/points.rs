@@ -1,12 +1,15 @@
 use num::integer::gcd;
+use num_enum::TryFromPrimitive;
 use std::cmp::{max, min};
+use std::convert::TryInto;
 use std::f64::consts::PI;
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
-#[derive(PartialEq, Debug, Clone, Copy)]
+#[derive(PartialEq, Debug, Clone, Copy, TryFromPrimitive)]
+#[repr(u8)]
 pub enum Dir {
     U,
-    D,
     L,
+    D,
     R,
 }
 
@@ -35,6 +38,14 @@ impl Dir {
             Dir::D => Point(0, -1),
             Dir::L => Point(-1, 0),
             Dir::R => Point(1, 0),
+        }
+    }
+    pub fn rotate_left(self) -> Dir {
+        match self {
+            Dir::U => Dir::L,
+            Dir::L => Dir::D,
+            Dir::D => Dir::R,
+            Dir::R => Dir::U,
         }
     }
     pub fn is_horizontal(self) -> bool {
@@ -189,11 +200,28 @@ impl Aabb {
             ),
         }
     }
-    pub fn width(&self) -> isize {
-        self.top_right.0 - self.bottom_left.0
+    pub fn all_points(&self) -> impl Iterator<Item = Point> + '_ {
+        (self.bottom_left.1..=self.top_right.1)
+            .flat_map(move |y| (self.bottom_left.0..=self.top_right.0).map(move |x| Point(x, y)))
     }
-    pub fn height(&self) -> isize {
-        self.top_right.1 - self.bottom_left.1
+    pub fn vec_with<T: Default + Clone>(&self, ft: impl Fn(Point) -> T) -> Vec<Vec<T>> {
+        let offset = self.bottom_left;
+        let mut v = vec![vec![Default::default(); self.width()]; self.height()];
+        for p in self.all_points() {
+            let rel = p - offset;
+            v[rel.1 as usize][rel.0 as usize] = ft(p);
+        }
+        v
+    }
+    pub fn width(&self) -> usize {
+        (1 + self.top_right.0 - self.bottom_left.0)
+            .try_into()
+            .unwrap()
+    }
+    pub fn height(&self) -> usize {
+        (1 + self.top_right.1 - self.bottom_left.1)
+            .try_into()
+            .unwrap()
     }
 }
 
@@ -205,4 +233,43 @@ pub fn bb_tests() {
     println!("{:?}", i);
     assert_eq!(i.bottom_left, Point(0, 4));
     assert_eq!(i.top_right, Point(0, 4));
+}
+
+use std::collections::HashMap;
+pub fn point_map_bounding_box<T>(hm: &HashMap<Point, T>) -> Aabb {
+    let a_point = hm.keys().nth(0).unwrap();
+    hm.keys().fold(Aabb::new(*a_point), |bb, &k| bb.extend(k))
+}
+/* pub fn all_points_in_hashmap_bb<T: Default + Clone>(
+    hm: &HashMap<Point, T>,
+) -> impl Iterator<Item = T> + '_ {
+    point_map_bounding_box(hm)
+        .all_points()
+        .map(move |p| hm.get(&p).cloned().unwrap_or_default())
+} */
+pub fn point_hashmap_to_array<T: Default + Copy>(hm: &HashMap<Point, T>) -> Vec<Vec<T>> {
+    let bb = hm
+        .keys()
+        .fold(Aabb::new(Point::origin()), |bb, &k| bb.extend(k));
+    let mut o: Vec<Vec<T>> = vec![vec![Default::default(); bb.width()]; bb.height()];
+    let offset = bb.bottom_left;
+    for x in 0..bb.width() {
+        for y in 0..bb.height() {
+            let rel = Point(x as isize, y as isize) + offset;
+            if let Some(t) = hm.get(&rel) {
+                o[x][y] = *t;
+            } else {
+                o[x][y] = Default::default();
+            }
+        }
+    }
+    o
+}
+pub fn render_char_map(m: &HashMap<Point, char>) -> String {
+    let bb = crate::utils::points::point_map_bounding_box(&m);
+    let v = bb.vec_with(|p| *m.get(&p).unwrap_or(&' '));
+    v.iter()
+        .map(|l| "\n".to_string() + &l.into_iter().collect::<String>())
+        .rev() //looks upside down...
+        .collect()
 }
