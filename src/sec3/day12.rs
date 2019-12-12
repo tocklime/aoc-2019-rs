@@ -16,11 +16,7 @@ impl FromStr for Moon {
         let re = Regex::new(r"^<x=(-?\d+), y=(-?\d+), z=(-?\d+)>$").unwrap();
         if let Some(m) = re.captures(s) {
             Ok(Moon {
-                pos: vec![
-                    m[1].parse().unwrap(),
-                    m[2].parse().unwrap(),
-                    m[3].parse().unwrap(),
-                ],
+                pos: (0..3).map(|x| m[x + 1].parse().unwrap()).collect(),
                 vel: vec![0, 0, 0],
             })
         } else {
@@ -66,19 +62,15 @@ pub fn p1(input: &[Moon]) -> i64 {
 
 #[aoc(day12, part2)]
 pub fn p2(input: &[Moon]) -> usize {
-    let mut moons = input.to_vec();
-    let periods = (0..3)
-        .map(|d| {
-            (1..)
-                .find(|_| {
-                    do_gravity(&mut moons, d);
-                    for m in moons.iter_mut() {
-                        m.pos[d] += m.vel[d];
-                    }
-                    return moons == input;
-                })
-                .unwrap()
-        })
-        .collect::<Vec<_>>();
-    periods.iter().cloned().fold(1, lcm)
+    let periods = (0..3).map(|d| {
+        let mut moons = input.to_vec();
+        (1..)
+            .find(|_| {
+                do_gravity(&mut moons, d);
+                moons.iter_mut().for_each(Moon::step);
+                moons == input
+            })
+            .unwrap()
+    });
+    periods.fold(1, lcm)
 }
