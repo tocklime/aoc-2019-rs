@@ -2,6 +2,7 @@ use crate::utils::points::{Point, PolarCoord};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, HashMap, HashSet};
 use std::f64::consts::FRAC_PI_2;
+use std::convert::TryInto;
 
 type AsteroidSet = HashSet<Point>;
 #[aoc_generator(day10)]
@@ -11,7 +12,7 @@ pub fn gen(input: &str) -> AsteroidSet {
         .enumerate()
         .flat_map(move |(y, l)| {
             l.chars().enumerate().filter_map(move |(x, c)| match c {
-                '#' => Some(Point(x as isize, y as isize)),
+                '#' => Some(Point(x.try_into().unwrap(), y.try_into().unwrap())),
                 _ => None,
             })
         })
@@ -29,8 +30,7 @@ pub fn get_best_station(input: &AsteroidSet) -> (usize, Point) {
             (
                 input
                     .iter()
-                    .filter(|&&x| x != p)
-                    .map(|&x| (x - p).simplest_direction())
+                    .filter_map(|&x| if x == p {None} else {Some((x - p).simplest_direction())})
                     .collect::<HashSet<_>>()
                     .len(),
                 p,
@@ -58,24 +58,21 @@ pub fn p2(input: &AsteroidSet, station: Point, nth: usize) -> isize {
         });
     let mut dir_list: Vec<_> = map.keys().cloned().collect();
     dir_list.sort_by(|&a, &b| {
-        let apc = PolarCoord::from_point(a).rotate(FRAC_PI_2);
-        let bpc = PolarCoord::from_point(b).rotate(FRAC_PI_2);
-        bpc.theta.partial_cmp(&apc.theta).unwrap()
+        let a_pc = PolarCoord::from_point(a).rotate(FRAC_PI_2);
+        let b_pc = PolarCoord::from_point(b).rotate(FRAC_PI_2);
+        b_pc.theta.partial_cmp(&a_pc.theta).unwrap()
     });
     let mut list_ix = 0;
     let mut order = Vec::new();
     while !dir_list.is_empty() {
         list_ix %= dir_list.len();
-        let heap = &mut map.get_mut(&dir_list[list_ix]).unwrap();
-        match heap.pop() {
-            Some(Reverse((_, x))) => {
+        let heap = map.get_mut(&dir_list[list_ix]).unwrap();
+            if let Some(Reverse((_, x))) = heap.pop() {
                 order.push(x);
                 list_ix += 1;
-            }
-            None => {
+            }else {
                 dir_list.remove(list_ix);
             }
-        }
     }
     let x = order[nth - 1];
     x.0 * 100 + x.1

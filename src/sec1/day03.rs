@@ -15,7 +15,7 @@ impl WireLine {
     pub fn as_bb(self) -> Aabb {
         Aabb::new(self.start).extend(self.end())
     }
-    pub fn intersects(self, other: &WireLine) -> Option<Point> {
+    pub fn intersects(self, other: &Self) -> Option<Point> {
         let bb1 = self.as_bb();
         let bb2 = other.as_bb();
         let joined = bb1.extend_box(bb2);
@@ -65,7 +65,7 @@ pub fn p1(input: &[Wire]) -> usize {
     input[0]
         .iter()
         .flat_map(move |a| input[1].iter().filter_map(move |b| a.intersects(b)))
-        .map(|p| p.manhattan_from_origin())
+        .map(Point::manhattan_from_origin)
         .filter(|l| *l > 0)
         .min()
         .unwrap()

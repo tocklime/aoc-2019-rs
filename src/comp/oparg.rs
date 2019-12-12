@@ -11,20 +11,20 @@ where
     MemType: CompMem,
 {
     pub fn new(value: MemType, mode: ParameterMode) -> Self {
-        Arg(value, mode)
+        Self(value, mode)
     }
     pub fn get(self, c: &Computer<MemType>) -> MemType {
         match self {
-            Arg(i, ParameterMode::IMMEDIATE) => i,
-            Arg(i, ParameterMode::POSITION) => c.abs_load(i.as_isize()),
-            Arg(i, ParameterMode::RELATIVE) => c.rel_load(i.as_isize()),
+            Self(i, ParameterMode::IMMEDIATE) => i,
+            Self(i, ParameterMode::POSITION) => c.abs_load(i.as_isize()),
+            Self(i, ParameterMode::RELATIVE) => c.rel_load(i.as_isize()),
         }
     }
     pub fn ptr(self, c: &Computer<MemType>) -> isize {
         match self {
-            Arg(i, ParameterMode::IMMEDIATE) => i.as_isize(),
-            Arg(i, ParameterMode::POSITION) => i.as_isize(),
-            Arg(i, ParameterMode::RELATIVE) => c.rel_offset(i.as_isize()),
+            Self(_, ParameterMode::IMMEDIATE) => panic!("Write instruction in immediate mode."),
+            Self(i, ParameterMode::POSITION) => i.as_isize(),
+            Self(i, ParameterMode::RELATIVE) => c.rel_offset(i.as_isize()),
         }
     }
 }

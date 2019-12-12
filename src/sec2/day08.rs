@@ -23,7 +23,7 @@ pub fn p1(input: &str) -> usize {
         .chars()
         .chunks(IM_SIZE)
         .into_iter()
-        .map(|x| x.collect::<Counter<_>>())
+        .map(std::iter::Iterator::collect::<Counter<_>>)
         .min_by_key(|x| x[&'0'])
         .unwrap();
     fewest0[&'1'] * fewest0[&'2']
@@ -32,7 +32,7 @@ pub fn p1(input: &str) -> usize {
 pub fn p2_forloop(input: &str) -> String {
     let layers = input.trim().chars().map(conv).chunks(IM_SIZE);
     let mut image = vec![vec!['X'; WIDTH]; HEIGHT];
-    for l in layers.into_iter() {
+    for l in &layers {
         for (p, c) in l.enumerate() {
             let x = p % WIDTH;
             let y = p / WIDTH;

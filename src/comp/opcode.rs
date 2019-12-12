@@ -18,16 +18,16 @@ pub enum OpCode {
 impl fmt::Display for OpCode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
-            OpCode::Add => "Add",
-            OpCode::Mult => "Mult",
-            OpCode::Input => "Input",
-            OpCode::Output => "Output",
-            OpCode::JumpIfTrue => "Jump If True",
-            OpCode::JumpIfFalse => "Jump If False",
-            OpCode::LessThan => "Less Than",
-            OpCode::Equals => "Equals",
-            OpCode::MoveRelativeBase => "Move Relative Base",
-            OpCode::Halt => "Halt",
+            Self::Add => "Add",
+            Self::Mult => "Mult",
+            Self::Input => "Input",
+            Self::Output => "Output",
+            Self::JumpIfTrue => "Jump If True",
+            Self::JumpIfFalse => "Jump If False",
+            Self::LessThan => "Less Than",
+            Self::Equals => "Equals",
+            Self::MoveRelativeBase => "Move Relative Base",
+            Self::Halt => "Halt",
         };
         write!(f, "{: <20}", s)
     }
@@ -36,13 +36,11 @@ impl fmt::Display for OpCode {
 impl OpCode {
     pub fn arg_count(self) -> usize {
         match self {
-            OpCode::Add | OpCode::Mult => 3,
-            OpCode::Input => 1,
-            OpCode::Output => 1,
-            OpCode::JumpIfTrue | OpCode::JumpIfFalse => 2,
-            OpCode::LessThan | OpCode::Equals => 3,
-            OpCode::Halt => 0,
-            OpCode::MoveRelativeBase => 1,
+            Self::Input | Self::Output | Self::MoveRelativeBase => 1,
+            Self::JumpIfTrue | Self::JumpIfFalse => 2,
+            Self::Add | Self::Mult |
+            Self::LessThan | Self::Equals => 3,
+            Self::Halt => 0,
         }
     }
 }

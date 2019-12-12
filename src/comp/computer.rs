@@ -31,8 +31,8 @@ where
 {
     type Err = <MemType as std::str::FromStr>::Err;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let is: Result<Vec<_>, _> = s.trim().split(',').map(|x| x.parse::<MemType>()).collect();
-        Ok(Computer::new(&is?))
+        let is: Result<Vec<_>, _> = s.trim().split(',').map(str::parse).collect();
+        Ok(Self::new(&is?))
     }
 }
 impl<MemType> Computer<MemType>
@@ -40,7 +40,7 @@ where
     MemType: CompMem,
 {
     pub fn new(initial_mem: &[MemType]) -> Self {
-        let mut c = Computer {
+        let mut c = Self {
             initial_mem: Vec::from(initial_mem),
             name: String::from("COMP"),
             memory: HashMap::new(),
@@ -64,7 +64,7 @@ where
         let mut output = String::new();
         let max_mem: usize = cmp::max(
             self.initial_mem.len(),
-            *self.memory.keys().max().unwrap_or(&0) as usize,
+            self.memory.keys().max().cloned().and_then(|x| x.try_into().ok()).unwrap_or(0_usize),
         );
         while ip < max_mem {
             let a = self.get_args(ip);
@@ -87,7 +87,7 @@ where
     pub fn get_args(&self, ip: usize) -> [MemType; 4] {
         let mut ans: [MemType; 4] = Default::default();
         for (i, a) in ans.iter_mut().enumerate() {
-            *a = self.abs_load((ip + i) as isize);
+            *a = self.abs_load((ip + i).try_into().unwrap());
         }
         ans
     }
@@ -130,16 +130,12 @@ where
         self
     }
     pub fn current_op_with_args(&self) -> Op<MemType> {
-        let ms = self.get_args(self.instruction_pointer as usize);
+        let ms = self.get_args(self.instruction_pointer.try_into().unwrap());
         Op::from_mem_slice(&ms)
     }
     pub fn abs_load(&self, pos: isize) -> MemType {
         self.memory.get(&pos).cloned().unwrap_or_else(|| {
-            if pos >= 0 && (pos as usize) < self.initial_mem.len() {
-                self.initial_mem[pos as usize]
-            } else {
-                Default::default()
-            }
+            pos.try_into().ok().and_then(|p : usize| self.initial_mem.get(p)).cloned().unwrap_or_else(Default::default)
         })
     }
     pub fn rel_load(&self, offset: isize) -> MemType {
@@ -204,7 +200,7 @@ where
         let op1 = ps % 10;
         let op2 = (ps / 10) % 10;
         let op3 = (ps / 100) % 10;
-        let o = Some(Op {
+        let o = Some(Self {
             op: OpCode::try_from(as_int % 100).ok()?,
             args: [
                 Arg::new(m[1], ParameterMode::try_from(op1).ok()?),
@@ -215,8 +211,8 @@ where
         info!("E: {}\n", o.unwrap());
         o
     }
-    pub fn from_mem_slice(m: &[MemType; 4]) -> Op<MemType> {
-        Op::try_from_mem_slice(m).unwrap()
+    pub fn from_mem_slice(m: &[MemType; 4]) -> Self {
+        Self::try_from_mem_slice(m).unwrap()
     }
     pub fn execute(&self, c: &mut Computer<MemType>) {
         let op_count = self.op.arg_count();

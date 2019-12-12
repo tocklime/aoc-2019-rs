@@ -15,79 +15,75 @@ pub enum Dir {
 }
 
 impl Dir {
-    pub fn from_udlr(c: &str) -> Option<Dir> {
+    pub fn from_udlr(c: &str) -> Option<Self> {
         match c {
-            "U" => Some(Dir::U),
-            "L" => Some(Dir::L),
-            "D" => Some(Dir::D),
-            "R" => Some(Dir::R),
+            "U" => Some(Self::U),
+            "L" => Some(Self::L),
+            "D" => Some(Self::D),
+            "R" => Some(Self::R),
             _ => None,
         }
     }
-    pub fn from_nsew(c: &str) -> Option<Dir> {
+    pub fn from_nsew(c: &str) -> Option<Self> {
         match c {
-            "N" => Some(Dir::U),
-            "W" => Some(Dir::L),
-            "S" => Some(Dir::D),
-            "E" => Some(Dir::R),
+            "N" => Some(Self::U),
+            "W" => Some(Self::L),
+            "S" => Some(Self::D),
+            "E" => Some(Self::R),
             _ => None,
         }
     }
     pub fn as_point_delta(self) -> Point {
         match self {
-            Dir::U => Point(0, 1),
-            Dir::D => Point(0, -1),
-            Dir::L => Point(-1, 0),
-            Dir::R => Point(1, 0),
+            Self::U => Point(0, 1),
+            Self::D => Point(0, -1),
+            Self::L => Point(-1, 0),
+            Self::R => Point(1, 0),
         }
     }
-    pub fn rotate_left(self) -> Dir {
+    pub fn rotate_left(self) -> Self {
         match self {
-            Dir::U => Dir::L,
-            Dir::L => Dir::D,
-            Dir::D => Dir::R,
-            Dir::R => Dir::U,
+            Self::U => Self::L,
+            Self::L => Self::D,
+            Self::D => Self::R,
+            Self::R => Self::U,
         }
     }
     pub fn is_horizontal(self) -> bool {
-        self == Dir::R || self == Dir::L
+        self == Self::R || self == Self::L
     }
 }
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub struct Point(pub isize, pub isize);
-/* impl Ord for Point {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.0
-    }
-} */
 impl Mul<isize> for Point {
     type Output = Self;
     fn mul(self, rhs: isize) -> Self {
-        Point(self.0 * rhs, self.1 * rhs)
+        Self(self.0 * rhs, self.1 * rhs)
     }
 }
 impl Mul<usize> for Point {
     type Output = Self;
     fn mul(self, rhs: usize) -> Self {
-        self * (rhs as isize)
+        let i : isize = rhs.try_into().unwrap();
+        self * i
     }
 }
 impl Add for Point {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
-        Point(self.0 + rhs.0, self.1 + rhs.1)
+        Self(self.0 + rhs.0, self.1 + rhs.1)
     }
 }
 impl Sub for Point {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self {
-        Point(self.0 - rhs.0, self.1 - rhs.1)
+        Self(self.0 - rhs.0, self.1 - rhs.1)
     }
 }
 impl Div<isize> for Point {
     type Output = Self;
     fn div(self, rhs: isize) -> Self {
-        Point(self.0 / rhs, self.1 / rhs)
+        Self(self.0 / rhs, self.1 / rhs)
     }
 }
 impl AddAssign for Point {
@@ -97,14 +93,14 @@ impl AddAssign for Point {
     }
 }
 impl Point {
-    pub fn origin() -> Point {
-        Point(0, 0)
+    pub fn origin() -> Self {
+        Self(0, 0)
     }
     pub fn manhattan_from_origin(self) -> usize {
-        (self.0.abs() + self.1.abs()) as usize
+        (self.0.abs() + self.1.abs()).try_into().unwrap()
     }
     pub fn manhattan(self, other: Self) -> usize {
-        ((self.0 - other.0).abs() + (self.1 - other.1).abs()) as usize
+        ((self.0 - other.0).abs() + (self.1 - other.1).abs()).try_into().unwrap()
     }
     pub fn gcd(self) -> isize {
         gcd(self.0, self.1)
@@ -112,7 +108,7 @@ impl Point {
     pub fn size_squared(self) -> isize {
         self.0 * self.0 + self.1 * self.1
     }
-    pub fn simplest_direction(self) -> Point {
+    pub fn simplest_direction(self) -> Self {
         self / self.gcd()
     }
     pub fn quadrant_clockwise(self) -> usize {
@@ -123,9 +119,6 @@ impl Point {
             (false, false) => 4,
         }
     }
-    pub fn gradient(self) -> f64 {
-        self.1 as f64 / self.0 as f64
-    }
 }
 #[derive(Debug)]
 pub struct PolarCoord {
@@ -133,14 +126,15 @@ pub struct PolarCoord {
     pub theta: f64,
 }
 impl PolarCoord {
-    pub fn from_point(p: Point) -> PolarCoord {
-        PolarCoord {
+    #[allow(clippy::cast_precision_loss)]
+    pub fn from_point(p: Point) -> Self {
+        Self {
             r: (p.size_squared() as f64).sqrt(),
             theta: (p.0 as f64).atan2(p.1 as f64),
         }
     }
-    pub fn simplify(self) -> PolarCoord {
-        PolarCoord {
+    pub fn simplify(self) -> Self {
+        Self {
             r: self.r,
             theta: if self.theta > 2. * PI {
                 self.theta % (2. * PI)
@@ -149,8 +143,8 @@ impl PolarCoord {
             },
         }
     }
-    pub fn rotate(self, rad: f64) -> PolarCoord {
-        PolarCoord {
+    pub fn rotate(self, rad: f64) -> Self {
+        Self {
             r: self.r,
             theta: self.theta + rad,
         }
@@ -166,7 +160,7 @@ pub struct Aabb {
 
 impl Aabb {
     pub fn new(p: Point) -> Self {
-        Aabb {
+        Self {
             bottom_left: p,
             top_right: p,
         }
@@ -190,7 +184,7 @@ impl Aabb {
         self.extend(b.bottom_left).extend(b.top_right)
     }
     pub fn intersect(&self, b: Self) -> Self {
-        Aabb {
+        Self {
             bottom_left: Point(
                 max(self.bottom_left.0, b.bottom_left.0),
                 max(self.bottom_left.1, b.bottom_left.1),
@@ -210,7 +204,9 @@ impl Aabb {
         let mut v = vec![vec![Default::default(); self.width()]; self.height()];
         for p in self.all_points() {
             let rel = p - offset;
-            v[rel.1 as usize][rel.0 as usize] = ft(p);
+            let x : usize = rel.0.try_into().unwrap();
+            let y : usize = rel.1.try_into().unwrap();
+            v[y][x] = ft(p);
         }
         v
     }
@@ -240,18 +236,6 @@ use std::collections::HashMap;
 pub fn point_map_bounding_box<T, S : BuildHasher>(hm: &HashMap<Point, T, S>) -> Aabb {
     let a_point = hm.keys().nth(0).unwrap();
     hm.keys().fold(Aabb::new(*a_point), |bb, &k| bb.extend(k))
-}
-pub fn point_hashmap_to_array<T: Default + Copy, S : BuildHasher>(hm: &HashMap<Point, T, S>) -> Vec<Vec<T>> {
-    let bb = hm
-        .keys()
-        .fold(Aabb::new(Point::origin()), |bb, &k| bb.extend(k));
-    let mut o: Vec<Vec<T>> = vec![vec![Default::default(); bb.width()]; bb.height()];
-    let offset = bb.bottom_left;
-    for p in bb.all_points() {
-        let rel = p + offset;
-        o[rel.1 as usize][rel.0 as usize] = hm.get(&p).cloned().unwrap_or_default();
-    }
-    o
 }
 pub fn render_char_map<S : BuildHasher>(m: &HashMap<Point, char, S>) -> String {
     let bb = crate::utils::points::point_map_bounding_box(&m);

@@ -7,7 +7,7 @@ pub fn check_groups(input: usize, check: fn(usize) -> bool) -> bool {
     let groups = digs.iter().group_by(|x| *x);
     let mut last_key: Option<usize> = None;
     let mut saw_any_match = false;
-    for (&k, g) in groups.into_iter() {
+    for (&k, g) in &groups {
         if last_key.map_or(false, |l| l > k) {
             return false; //key decreased!
         }

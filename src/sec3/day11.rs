@@ -9,8 +9,8 @@ const WHITE: char = '█';
 const BLACK: char = '░';
 
 pub fn robot(
-    input: mpsc::Receiver<isize>,
-    output: mpsc::Sender<isize>,
+    input: &mpsc::Receiver<isize>,
+    output: &mpsc::Sender<isize>,
     c: char,
 ) -> HashMap<Point, char> {
     let mut painted_panels = HashMap::new();
@@ -50,7 +50,7 @@ pub fn run(input: &str, init_c: char) -> HashMap<Point, char> {
     let c_thr = thread::spawn(move || {
         c.run();
     });
-    let robot_thr = thread::spawn(move || robot(rxb, txa, init_c));
+    let robot_thr = thread::spawn(move || robot(&rxb, &txa, init_c));
     c_thr.join().unwrap();
     robot_thr.join().unwrap()
 }
@@ -68,7 +68,7 @@ pub fn p2(input: &str) -> String {
 pub fn example() {
     let (txa, rxa) = mpsc::channel::<isize>();
     let (txb, rxb) = mpsc::channel::<isize>();
-    let r = thread::spawn(move || robot(rxb, txa, BLACK));
+    let r = thread::spawn(move || robot(&rxb, &txa, BLACK));
 
     let input: Vec<isize> = vec![1, 0, 0, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0];
     let correct_output = [0, 0, 0, 0, 1, 0, 0, 0];
