@@ -44,13 +44,11 @@ pub fn robot(
 }
 pub fn run(input: &str, init_c: char) -> HashMap<Point, char> {
     let mut c: Computer<isize> = Computer::from_str(input).unwrap();
-    let (txa, rxa) = mpsc::channel::<isize>();
-    let (txb, rxb) = mpsc::channel::<isize>();
-    c.with_chan_input(rxa).with_chan_output(txb);
+    let (tx,rx) = c.make_io_chans();
     let c_thr = thread::spawn(move || {
         c.run();
     });
-    let robot_thr = thread::spawn(move || robot(&rxb, &txa, init_c));
+    let robot_thr = thread::spawn(move || robot(&rx, &tx, init_c));
     c_thr.join().unwrap();
     robot_thr.join().unwrap()
 }

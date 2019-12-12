@@ -106,20 +106,33 @@ where
         other: &mut Self,
         initial_input: &[MemType],
     ) -> &mut Self {
-        let (tx, rx) = mpsc::channel::<MemType>();
+        let tx = self.make_input_chan();
         for &v in initial_input {
             tx.send(v).expect("Failed to send initial value");
         }
         other.with_chan_output(tx);
-        self.with_chan_input(rx)
+        self
     }
-    pub fn with_chan_input(&mut self, x: Receiver<MemType>) -> &mut Self {
+    fn with_chan_input(&mut self, x: Receiver<MemType>) -> &mut Self {
         self.input_chan = Some(x);
         self
     }
-    pub fn with_chan_output(&mut self, x: Sender<MemType>) -> &mut Self {
+    fn with_chan_output(&mut self, x: Sender<MemType>) -> &mut Self {
         self.output_chan = Some(x);
         self
+    }
+    pub fn make_input_chan(&mut self) -> Sender<MemType> {
+        let (tx, rx) = mpsc::channel();
+        self.with_chan_input(rx);
+        tx
+    }
+    pub fn make_output_chan(&mut self) -> Receiver<MemType> {
+        let (tx, rx) = mpsc::channel();
+        self.with_chan_output(tx);
+        rx
+    }
+    pub fn make_io_chans(&mut self) -> (Sender<MemType>, Receiver<MemType>){
+        (self.make_input_chan(), self.make_output_chan())
     }
     pub fn reset(&mut self) -> &mut Self {
         self.memory = HashMap::new();
