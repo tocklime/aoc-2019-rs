@@ -1,6 +1,6 @@
+use crate::utils::iter::all_ix_pairs;
 use num::integer::lcm;
 use regex::Regex;
-use std::cmp::Ordering;
 use std::str::FromStr;
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -47,21 +47,11 @@ pub fn gen(input: &str) -> Vec<Moon> {
 }
 
 fn do_gravity(moons: &mut [Moon], dimension: usize) {
-    for m1ix in 0..moons.len() - 1 {
-        for m2ix in m1ix + 1..moons.len() {
-            match moons[m1ix].pos[dimension].cmp(&moons[m2ix].pos[dimension]) {
-                Ordering::Less => {
-                    moons.get_mut(m1ix).unwrap().vel[dimension] += 1;
-                    moons.get_mut(m2ix).unwrap().vel[dimension] -= 1;
-                }
-                Ordering::Equal => {}
-                Ordering::Greater => {
-                    moons.get_mut(m1ix).unwrap().vel[dimension] -= 1;
-                    moons.get_mut(m2ix).unwrap().vel[dimension] += 1;
-                }
-            }
-        }
-    }
+    all_ix_pairs(moons.len()).for_each(|(m1ix, m2ix)| {
+        let s = (moons[m1ix].pos[dimension] - moons[m2ix].pos[dimension]).signum();
+        moons.get_mut(m1ix).unwrap().vel[dimension] -= s;
+        moons.get_mut(m2ix).unwrap().vel[dimension] += s;
+    })
 }
 
 #[aoc(day12, part1)]
@@ -76,10 +66,9 @@ pub fn p1(input: &[Moon]) -> i64 {
 
 #[aoc(day12, part2)]
 pub fn p2(input: &[Moon]) -> usize {
-    let periods = (0..=2)
+    let mut moons = input.to_vec();
+    let periods = (0..3)
         .map(|d| {
-            let mut moons = input.to_vec();
-            //grav
             (1..)
                 .find(|_| {
                     do_gravity(&mut moons, d);
