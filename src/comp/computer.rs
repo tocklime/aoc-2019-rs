@@ -5,8 +5,8 @@ use std::collections::HashMap;
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::str::FromStr;
-use std::sync::mpsc;
 use std::sync::mpsc::{Receiver, Sender};
+use std::sync::{mpsc, Arc, Mutex};
 
 use super::enums::*;
 use super::oparg::Arg;
@@ -20,6 +20,7 @@ pub struct Computer<MemType = i32> {
     state: ComputerState,
     fixed_input: Vec<MemType>,
     input_chan: Option<Receiver<MemType>>,
+    input_arc: Option<Arc<Mutex<MemType>>>,
     output: Vec<MemType>,
     output_chan: Option<Sender<MemType>>,
     relative_base: isize,
@@ -48,6 +49,7 @@ where
             state: ComputerState::RUNNING,
             fixed_input: vec![],
             input_chan: None,
+            input_arc: None,
             output: vec![],
             output_chan: None,
             relative_base: 0,
@@ -64,7 +66,12 @@ where
         let mut output = String::new();
         let max_mem: usize = cmp::max(
             self.initial_mem.len(),
-            self.memory.keys().max().cloned().and_then(|x| x.try_into().ok()).unwrap_or(0_usize),
+            self.memory
+                .keys()
+                .max()
+                .cloned()
+                .and_then(|x| x.try_into().ok())
+                .unwrap_or(0_usize),
         );
         while ip < max_mem {
             let a = self.get_args(ip);
@@ -97,6 +104,13 @@ where
     pub fn get_output(&self) -> &[MemType] {
         &self.output
     }
+    pub fn clear_output(&mut self) -> &mut Self {
+        self.output.clear();
+        self
+    }
+    pub fn take_output(&mut self) -> Vec<MemType> {
+        std::mem::replace(&mut self.output, Vec::new())
+    }
     pub fn with_input(&mut self, x: MemType) -> &mut Self {
         self.fixed_input.push(x);
         self
@@ -121,6 +135,11 @@ where
         self.output_chan = Some(x);
         self
     }
+    pub fn make_input_arc(&mut self) -> Arc<Mutex<MemType>> {
+        let x = Arc::new(Mutex::new(Default::default()));
+        self.input_arc = Some(x.clone());
+        x
+    }
     pub fn make_input_chan(&mut self) -> Sender<MemType> {
         let (tx, rx) = mpsc::channel();
         self.with_chan_input(rx);
@@ -131,7 +150,7 @@ where
         self.with_chan_output(tx);
         rx
     }
-    pub fn make_io_chans(&mut self) -> (Sender<MemType>, Receiver<MemType>){
+    pub fn make_io_chans(&mut self) -> (Sender<MemType>, Receiver<MemType>) {
         (self.make_input_chan(), self.make_output_chan())
     }
     pub fn reset(&mut self) -> &mut Self {
@@ -148,7 +167,11 @@ where
     }
     pub fn abs_load(&self, pos: isize) -> MemType {
         self.memory.get(&pos).cloned().unwrap_or_else(|| {
-            pos.try_into().ok().and_then(|p : usize| self.initial_mem.get(p)).cloned().unwrap_or_else(Default::default)
+            pos.try_into()
+                .ok()
+                .and_then(|p: usize| self.initial_mem.get(p))
+                .cloned()
+                .unwrap_or_else(Default::default)
         })
     }
     pub fn rel_load(&self, offset: isize) -> MemType {
@@ -187,6 +210,19 @@ where
                 ComputerState::RUNNING => (),
             }
         }
+    }
+    pub fn run_to_input(&mut self) -> bool {
+        self.step();
+        loop {
+            let op = self.current_op_with_args();
+            if self.state == ComputerState::HALTED || op.op == OpCode::Input {
+                return self.state != ComputerState::HALTED;
+            }
+            op.execute(self);
+        }
+    }
+    pub fn is_halted(&self) -> bool {
+        self.state() == ComputerState::HALTED
     }
     pub fn step(&mut self) -> &mut Self {
         self.current_op_with_args().execute(self);
@@ -242,6 +278,8 @@ where
                 } else if let Some(r) = &c.input_chan {
                     info!(target: "IO", "{} INP WAIT", c.name);
                     r.recv().expect("No value on receiver")
+                } else if let Some(a) = &c.input_arc {
+                    *a.lock().unwrap()
                 } else {
                     panic!("No input")
                 };
