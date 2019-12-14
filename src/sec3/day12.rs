@@ -15,7 +15,7 @@ impl FromStr for Moon {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let re = Regex::new(r"^<x=(-?\d+), y=(-?\d+), z=(-?\d+)>$").unwrap();
         if let Some(m) = re.captures(s) {
-            Ok(Moon {
+            Ok(Self {
                 pos: (0..3).map(|x| m[x + 1].parse().unwrap()).collect(),
                 vel: vec![0, 0, 0],
             })
@@ -61,6 +61,7 @@ pub fn p1(input: &[Moon]) -> i64 {
 }
 
 #[aoc(day12, part2)]
+#[allow(clippy::maybe_infinite_iter)]
 pub fn p2(input: &[Moon]) -> usize {
     let periods = (0..3).map(|d| {
         let mut moons = input.to_vec();

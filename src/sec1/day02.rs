@@ -16,10 +16,9 @@ pub fn p1(input: &str) -> i32 {
 #[aoc(day2, part2)]
 pub fn p2(input: &str) -> i32 {
     let mut c = Computer::from_str(input).unwrap();
-    (0..100)
+    let (n, v) = (0..100)
         .flat_map(move |n| (0..100).map(move |v| (n, v)))
-        .filter(|(n, v)| run_with_args(c.reset(), *n, *v) == 19_690_720)
-        .map(|(n, v)| 100 * n + v)
-        .nth(0)
-        .unwrap()
+        .find(|(n, v)| run_with_args(c.reset(), *n, *v) == 19_690_720)
+        .unwrap();
+    100 * n + v
 }
