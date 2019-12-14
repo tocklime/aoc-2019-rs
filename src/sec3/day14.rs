@@ -15,6 +15,27 @@ pub struct Recipe<'a> {
 }
 
 type RecipeBook<'a> = HashMap<&'a str, (usize, Vec<(usize, &'a str)>)>;
+
+fn hello_parser(i: &str) -> nom::IResult<&str, &str> {
+    nom::bytes::complete::tag("hello")(i)
+}
+
+use nom::{
+    character::complete::{alphanumeric1, digit1, space0},
+    combinator::map_res,
+    sequence::separated_pairc,
+    IResult,
+};
+//5 B, 7 C => 1 BC
+fn item_parse(i: &str) -> IResult<&str, (usize, &str)> {
+    separated_pairc(
+        i,
+        map_res(digit1, |a: &str| a.parse::<usize>()),
+        space0,
+        alphanumeric1,
+    )
+}
+
 pub fn mk_rb(input: &str) -> RecipeBook {
     input
         .trim()
