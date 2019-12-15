@@ -26,6 +26,27 @@ pub struct Computer<MemType = i32> {
     relative_base: isize,
 }
 
+impl<MT> Clone for Computer<MT>
+where
+    MT: CompMem,
+{
+    fn clone(&self) -> Self {
+        Computer {
+            name: self.name.clone(),
+            initial_mem: self.initial_mem.clone(),
+            memory: self.memory.clone(),
+            instruction_pointer: self.instruction_pointer,
+            state: self.state,
+            relative_base: self.relative_base,
+            fixed_input: self.fixed_input.clone(),
+            input_chan: None,
+            input_arc: None,
+            output: self.output.clone(),
+            output_chan: None,
+        }
+    }
+}
+
 impl<MemType> FromStr for Computer<MemType>
 where
     MemType: FromStr + CompMem,

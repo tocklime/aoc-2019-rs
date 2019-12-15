@@ -1,9 +1,9 @@
 use num::integer::gcd;
-use std::hash::BuildHasher;
 use num_enum::TryFromPrimitive;
 use std::cmp::{max, min};
 use std::convert::TryInto;
 use std::f64::consts::PI;
+use std::hash::BuildHasher;
 use std::ops::{Add, AddAssign, Div, Mul, Sub};
 #[derive(PartialEq, Debug, Clone, Copy, TryFromPrimitive)]
 #[repr(u8)]
@@ -15,6 +15,9 @@ pub enum Dir {
 }
 
 impl Dir {
+    pub fn all() -> [Dir; 4] {
+        [Dir::U, Dir::D, Dir::L, Dir::R]
+    }
     pub fn from_udlr(c: &str) -> Option<Self> {
         match c {
             "U" => Some(Self::U),
@@ -49,6 +52,14 @@ impl Dir {
             Self::R => Self::U,
         }
     }
+    pub fn rotate_right(self) -> Self {
+        match self {
+            Self::U => Self::R,
+            Self::L => Self::U,
+            Self::D => Self::L,
+            Self::R => Self::D,
+        }
+    }
     pub fn is_horizontal(self) -> bool {
         self == Self::R || self == Self::L
     }
@@ -64,7 +75,7 @@ impl Mul<isize> for Point {
 impl Mul<usize> for Point {
     type Output = Self;
     fn mul(self, rhs: usize) -> Self {
-        let i : isize = rhs.try_into().unwrap();
+        let i: isize = rhs.try_into().unwrap();
         self * i
     }
 }
@@ -100,7 +111,9 @@ impl Point {
         (self.0.abs() + self.1.abs()).try_into().unwrap()
     }
     pub fn manhattan(self, other: Self) -> usize {
-        ((self.0 - other.0).abs() + (self.1 - other.1).abs()).try_into().unwrap()
+        ((self.0 - other.0).abs() + (self.1 - other.1).abs())
+            .try_into()
+            .unwrap()
     }
     pub fn gcd(self) -> isize {
         gcd(self.0, self.1)
@@ -118,6 +131,14 @@ impl Point {
             (false, true) => 3,
             (false, false) => 4,
         }
+    }
+    pub fn neighbours(self) -> [Point; 4] {
+        [
+            self + Dir::U.as_point_delta(),
+            self + Dir::L.as_point_delta(),
+            self + Dir::D.as_point_delta(),
+            self + Dir::R.as_point_delta(),
+        ]
     }
 }
 #[derive(Debug)]
@@ -204,8 +225,8 @@ impl Aabb {
         let mut v = vec![vec![Default::default(); self.width()]; self.height()];
         for p in self.all_points() {
             let rel = p - offset;
-            let x : usize = rel.0.try_into().unwrap();
-            let y : usize = rel.1.try_into().unwrap();
+            let x: usize = rel.0.try_into().unwrap();
+            let y: usize = rel.1.try_into().unwrap();
             v[y][x] = ft(p);
         }
         v
@@ -233,11 +254,11 @@ pub fn bb_tests() {
 }
 
 use std::collections::HashMap;
-pub fn point_map_bounding_box<T, S : BuildHasher>(hm: &HashMap<Point, T, S>) -> Aabb {
+pub fn point_map_bounding_box<T, S: BuildHasher>(hm: &HashMap<Point, T, S>) -> Aabb {
     let a_point = hm.keys().nth(0).unwrap();
     hm.keys().fold(Aabb::new(*a_point), |bb, &k| bb.extend(k))
 }
-pub fn render_char_map<S : BuildHasher>(m: &HashMap<Point, char, S>) -> String {
+pub fn render_char_map<S: BuildHasher>(m: &HashMap<Point, char, S>) -> String {
     let bb = crate::utils::points::point_map_bounding_box(&m);
     let v = bb.vec_with(|p| *m.get(&p).unwrap_or(&' '));
     v.iter()
