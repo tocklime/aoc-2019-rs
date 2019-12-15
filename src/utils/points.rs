@@ -52,6 +52,14 @@ impl Dir {
             Self::R => Self::U,
         }
     }
+    pub fn about_turn(self) -> Self {
+        match self {
+            Self::U => Self::D,
+            Self::L => Self::R,
+            Self::D => Self::U,
+            Self::R => Self::L,
+        }
+    }
     pub fn rotate_right(self) -> Self {
         match self {
             Self::U => Self::R,
@@ -134,11 +142,14 @@ impl Point {
     }
     pub fn neighbours(self) -> [Point; 4] {
         [
-            self + Dir::U.as_point_delta(),
-            self + Dir::L.as_point_delta(),
-            self + Dir::D.as_point_delta(),
-            self + Dir::R.as_point_delta(),
+            self.step(Dir::U),
+            self.step(Dir::L),
+            self.step(Dir::D),
+            self.step(Dir::R),
         ]
+    }
+    pub fn step(self, d: Dir) -> Point {
+        self + d.as_point_delta()
     }
 }
 #[derive(Debug)]
@@ -259,10 +270,22 @@ pub fn point_map_bounding_box<T, S: BuildHasher>(hm: &HashMap<Point, T, S>) -> A
     hm.keys().fold(Aabb::new(*a_point), |bb, &k| bb.extend(k))
 }
 pub fn render_char_map<S: BuildHasher>(m: &HashMap<Point, char, S>) -> String {
+    render_char_map_w(m, 1, ' ')
+}
+pub fn render_char_map_w<S: BuildHasher>(
+    m: &HashMap<Point, char, S>,
+    width: u8,
+    default: char,
+) -> String {
     let bb = crate::utils::points::point_map_bounding_box(&m);
-    let v = bb.vec_with(|p| *m.get(&p).unwrap_or(&' '));
+    let v = bb.vec_with(|p| *m.get(&p).unwrap_or(&default));
     v.iter()
-        .map(|l| "\n".to_string() + &l.iter().collect::<String>())
+        .map(|l| {
+            "\n".to_string()
+                + &l.iter()
+                    .flat_map(|&x| (0..width).map(move |_| x))
+                    .collect::<String>()
+        })
         .rev() //looks upside down...
         .collect()
 }
