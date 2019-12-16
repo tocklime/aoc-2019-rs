@@ -1,8 +1,9 @@
-use std::collections::HashMap;
-use std::convert::TryInto;
-
 use crate::comp::Computer;
 use crate::utils::points::{Dir, Point};
+use log::info;
+use std::collections::hash_map::Entry;
+use std::collections::HashMap;
+use std::convert::TryInto;
 
 const WALL: char = '█';
 const SPACE: char = '.';
@@ -14,7 +15,7 @@ const BRANCH: char = '╳';
 const START: char = 'S';
 
 const RESPS: [char; 3] = [WALL, SPACE, OXYGEN];
-pub fn try_move(c: &mut Computer<i32>, d: Dir) -> (char, bool) {
+pub fn try_move(c: &mut Computer<i32>, d: Dir) -> char {
     let i = match d {
         Dir::U => 1,
         Dir::D => 2,
@@ -25,7 +26,7 @@ pub fn try_move(c: &mut Computer<i32>, d: Dir) -> (char, bool) {
     let o = c.take_output();
     assert_eq!(o.len(), 1);
     let o_u: usize = o[0].try_into().unwrap();
-    (RESPS[o_u], o_u > 0)
+    RESPS[o_u]
 }
 
 /// Performs a breadth first search of the map, and returns a map of point to distance from the start.
@@ -60,54 +61,41 @@ pub fn bfs_depth(map: &HashMap<Point, char>, start: Point) -> HashMap<Point, u32
 ///  * '#': wall
 #[aoc_generator(day15)]
 pub fn explore(input: &str) -> HashMap<Point, char> {
-    let mut c = input.parse::<Computer>().unwrap();
-    let mut known_map = HashMap::new();
-    let mut position = Point(0, 0);
-    known_map.insert(position, START);
-    let mut save_points: Vec<(Point, Dir, Computer<i32>)> = Vec::new();
-    loop {
-        known_map.entry(position).and_modify(|x| {
-            if *x == SPACE {
-                *x = EXPLORED_SPACE;
-            }
-        });
+    let c = input.parse::<Computer>().unwrap();
+    let position = Point(0, 0);
+    let mut known_map: HashMap<Point, char> = [(position, START)].iter().cloned().collect();
+    let mut save_points: Vec<(Point, Computer<i32>)> = vec![(position, c)];
+    while !save_points.is_empty() {
+        let (position, c) = save_points.pop().unwrap();
         //scan around in directions we don't know.
-        for &d in &Dir::all() {
-            let new_pos = position.step(d);
-            if !known_map.contains_key(&new_pos) {
-                let (ch, moved) = try_move(&mut c, d);
-                if moved {
-                    try_move(&mut c, d.about_turn());
-                }
-                known_map.insert(new_pos, ch);
-            }
-        }
-        //pick new dir
-        let dirs: Vec<_> = Dir::all()
+        let mut dirs: Vec<(Point, Computer)> = Dir::all()
             .iter()
-            .cloned()
-            .filter(|&d| known_map[&position.step(d)] == SPACE)
-            .collect();
-        let heading = if dirs.is_empty() {
-            known_map.insert(position, DEAD_END);
-            match save_points.pop() {
-                Some(s) => {
-                    c = s.2;
-                    position = s.0;
-                    s.1
+            .filter_map(|&d| {
+                let new_pos = position.step(d);
+                match known_map.entry(new_pos) {
+                    Entry::Occupied(_) => None,
+                    Entry::Vacant(e) => {
+                        let mut c2 = c.clone();
+                        let ch = try_move(&mut c2, d);
+                        e.insert(ch);
+                        if ch == SPACE {
+                            Some((new_pos, c2))
+                        } else {
+                            None
+                        }
+                    }
                 }
-                None => break known_map,
-            }
-        } else {
-            for &other in dirs.iter().skip(1) {
-                known_map.insert(position, BRANCH);
-                save_points.push((position, other, c.clone()));
-            }
-            dirs[0]
+            })
+            .collect();
+        //mark points of interest.
+        match dirs.len() {
+            0 => known_map.insert(position, DEAD_END),
+            1 => known_map.insert(position, EXPLORED_SPACE),
+            _ => known_map.insert(position, BRANCH),
         };
-        assert_ne!(try_move(&mut c, heading), (WALL, false)); //already explored, so know this is safe.
-        position = position.step(heading);
+        save_points.append(&mut dirs);
     }
+    known_map
 }
 
 #[aoc(day15, part1)]
@@ -124,7 +112,7 @@ pub fn p2(input: &HashMap<Point, char>) -> u32 {
         .iter()
         .find(|(_, &v)| v == OXYGEN)
         .expect("No oxygen!");
-    println!(
+    info!(
         "{}",
         crate::utils::points::render_char_map_w(input, 2, UNKNOWN)
     );
