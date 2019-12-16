@@ -15,8 +15,8 @@ pub enum Dir {
 }
 
 impl Dir {
-    pub fn all() -> [Dir; 4] {
-        [Dir::U, Dir::D, Dir::L, Dir::R]
+    pub fn all() -> [Self; 4] {
+        [Self::U, Self::D, Self::L, Self::R]
     }
     pub fn from_udlr(c: &str) -> Option<Self> {
         match c {
@@ -140,7 +140,7 @@ impl Point {
             (false, false) => 4,
         }
     }
-    pub fn neighbours(self) -> [Point; 4] {
+    pub fn neighbours(self) -> [Self; 4] {
         [
             self.step(Dir::U),
             self.step(Dir::L),
@@ -148,7 +148,7 @@ impl Point {
             self.step(Dir::R),
         ]
     }
-    pub fn step(self, d: Dir) -> Point {
+    pub fn step(self, d: Dir) -> Self {
         self + d.as_point_delta()
     }
 }

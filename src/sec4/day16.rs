@@ -1,28 +1,33 @@
+use rayon::prelude::*;
+use std::convert::TryInto;
+use std::cmp::{max,min};
+
 #[aoc_generator(day16)]
-pub fn gen(input: &str) -> Vec<i32> {
-    input.bytes().map(|x| (x - b'0') as i32).collect()
+pub fn gen(input: &str) -> Vec<usize> {
+    input.bytes().map(|x| (x - b'0').try_into().unwrap()).collect()
 }
 #[aoc(day16, part1)]
-pub fn p1(input: &[i32]) -> i32 {
+pub fn p1(input: &[usize]) -> usize {
     let mut x = input.to_vec();
     (0..100).for_each(|_| x = fft(&x));
     list_to_int(&x[..8])
 }
-pub fn list_to_int(l: &[i32]) -> i32 {
+pub fn list_to_int(l: &[usize]) -> usize {
     l.iter().fold(0, |n, &d| 10 * n + d)
 }
-#[aoc(day16, part2)]
-pub fn p2(input: &[i32]) -> i32 {
-    let offset: usize = list_to_int(&input[..7]) as usize;
+#[aoc(day16, part2, second_half_optimisation)]
+pub fn p2(input: &[usize]) -> usize {
+    let offset = list_to_int(&input[..7]);
+    assert!(offset > (input.len() * 10_000 / 2));
     let mut input: Vec<_> = input
-        .into_iter()
+        .iter()
         .cycle()
         .take(input.len() * 10000)
         .skip(offset)
         .cloned()
         .collect();
     for _ in 0..100 {
-        let mut sum = input.iter().sum::<i32>();
+        let mut sum = input.iter().sum::<usize>();
         for i in &mut input {
             let tmp = *i;
             *i = sum % 10;
@@ -31,23 +36,36 @@ pub fn p2(input: &[i32]) -> i32 {
     }
     list_to_int(&input[..8])
 }
+//#[aoc(day16, part2, naive)]
+pub fn p2_naive(input: &[usize]) -> usize {
+    let offset = list_to_int(&input[..7]);
+    let mut x : Vec<usize> = input.iter().cycle().take(input.len() * 10_000).cloned().collect::<Vec<_>>();
+    (0..100).for_each(|n| {
+        println!("{}",n);
+        x = fft(&x)
+    });
+    list_to_int(&x[offset..8 + offset])
+}
 
-pub fn fft(input: &[i32]) -> Vec<i32> {
-    (0..input.len())
+pub fn fft(input: &[usize]) -> Vec<usize> {
+    let mut psums = input.iter().scan(0,|a,&b| {*a += b;  Some(*a)}).collect::<Vec<_>>();
+    psums.insert(0,0);
+    let len = input.len();
+    (0..len).into_par_iter()
         .map(|ix| {
-            let pos = (ix..)
+            let pos = (ix..len)
                 .step_by(4 * (ix + 1))
-                .flat_map(|x| (x..x + 1 + ix))
-                .take_while(|&x| x < input.len())
-                .map(|i| input[i])
-                .sum::<i32>();
-            let neg = (3 * ix + 2..)
+                .map(|start| {
+                    let end = min(len,start + 1 + ix);
+                    psums[end] - psums[start]
+                }).sum::<usize>();
+            let neg = (3 * ix + 2..len)
                 .step_by(4 * (ix + 1))
-                .flat_map(|x| (x..x + 1 + ix))
-                .take_while(|&x| x < input.len())
-                .map(|i| input[i])
-                .sum::<i32>();
-            (pos - neg).abs() % 10
+                .map(|start| {
+                    let end = min(len,start + 1 + ix);
+                    psums[end] - psums[start]
+                }).sum::<usize>();
+            (max(pos,neg) - min(pos,neg)) % 10
         })
         .collect()
 }

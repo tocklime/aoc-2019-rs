@@ -31,7 +31,7 @@ where
     MT: CompMem,
 {
     fn clone(&self) -> Self {
-        Computer {
+        Self {
             name: self.name.clone(),
             initial_mem: self.initial_mem.clone(),
             memory: self.memory.clone(),

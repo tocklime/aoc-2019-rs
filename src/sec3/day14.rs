@@ -6,30 +6,24 @@ use itertools::Itertools;
 
 type RecipeBook<'a> = HashMap<&'a str, (usize, Vec<(usize, &'a str)>)>;
 
+pub fn split_pair<'a>(split: &str, input: &'a str) -> (&'a str, &'a str) {
+    let x =input.splitn(2, split).collect_vec();
+    assert_eq!(x.len(),2);
+    (x[0],x[1])
+}
+pub fn parse_item(i: &str) -> (usize, &str) {
+    let (a,b) = split_pair(" ", i.trim());
+    (a.parse().unwrap(),b)
+}
 pub fn mk_rb(input: &str) -> RecipeBook {
     input
         .trim()
         .lines()
         .map(|l| {
-            let a = l
-                .split("=>")
-                .map(|side| {
-                    side.trim()
-                        .split(',')
-                        .map(|item| {
-                            let b = item.trim().split(' ').map(str::trim).collect_vec();
-                            assert_eq!(b.len(), 2);
-                            (
-                                b[0].parse::<usize>()
-                                    .unwrap_or_else(|x| panic!("Not an int {}: {}", b[0], x)),
-                                b[1],
-                            )
-                        })
-                        .collect_vec()
-                })
-                .collect_vec();
-            let (q, output) = a[1][0];
-            (output, (q, a[0].clone()))
+            let (ing,out) = split_pair("=>", l);
+            let (q, output) = parse_item(out);
+            let input = ing.split(',').map(parse_item).collect_vec();
+            (output, (q, input))
         })
         .collect()
 }
