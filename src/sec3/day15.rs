@@ -39,12 +39,10 @@ pub fn bfs_depth(map: &HashMap<Point, char>, start: Point) -> HashMap<Point, u32
         let (pos, count) = points.pop_front().unwrap();
         Dir::all().iter().for_each(|d| {
             let p2 = pos + d.as_point_delta();
-            if map.get(&p2) != Some(&WALL) {
-                if !min_dist_map.contains_key(&p2) {
-                    min_dist_map.insert(p2, count + 1);
-                    let t = (p2, count + 1);
-                    points.push_back(t);
-                }
+            if map.get(&p2) != Some(&WALL) && !min_dist_map.contains_key(&p2) {
+                min_dist_map.insert(p2, count + 1);
+                let t = (p2, count + 1);
+                points.push_back(t);
             }
         });
     }

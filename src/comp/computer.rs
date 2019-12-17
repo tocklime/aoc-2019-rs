@@ -132,6 +132,10 @@ where
     pub fn take_output(&mut self) -> Vec<MemType> {
         std::mem::replace(&mut self.output, Vec::new())
     }
+    pub fn give_input(&mut self, input: Vec<MemType>) -> &mut Self {
+        std::mem::replace(&mut self.fixed_input, input);
+        self
+    }
     pub fn with_input(&mut self, x: MemType) -> &mut Self {
         self.fixed_input.push(x);
         self
