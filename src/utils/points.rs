@@ -151,6 +151,10 @@ impl Point {
     pub fn step(self, d: Dir) -> Self {
         self + d.as_point_delta()
     }
+    pub fn up(self) -> Self{ self.step(Dir::U) }
+    pub fn down(self) -> Self{ self.step(Dir::D) }
+    pub fn left(self) -> Self{ self.step(Dir::L) }
+    pub fn right(self) -> Self{ self.step(Dir::R) }
 }
 #[derive(Debug)]
 pub struct PolarCoord {
