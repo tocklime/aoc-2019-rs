@@ -289,3 +289,14 @@ pub fn render_char_map_w<S: BuildHasher>(
         .rev() //looks upside down...
         .collect()
 }
+pub fn as_point_map(input: &str) -> HashMap<Point, char> {
+    input
+        .lines()
+        .enumerate()
+        .flat_map(move |(y, line)| {
+            line.chars()
+                .enumerate()
+                .map(move |(x, c)| (Point(x as isize, y as isize), c))
+        })
+        .collect()
+}
