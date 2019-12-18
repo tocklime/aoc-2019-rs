@@ -2,7 +2,7 @@ use crate::utils::points::as_point_map;
 use crate::utils::prelude::*;
 use std::cmp::min;
 
-pub fn bfs(
+pub fn search(
     map: &HashMap<Point, char>,
     start: Point,
     keys: &BTreeSet<char>,
@@ -26,7 +26,6 @@ pub fn bfs(
                         if here.is_lowercase() && !keys.contains(&here) {
                             min_dist_map.insert(p2, (*here, (count + 1, p2)));
                         } else {
-                            //println!("Try later: {:?}", p2);
                             points.push_back((p2, count + 1));
                         }
                     }
@@ -52,10 +51,10 @@ pub fn p2(input: &str) -> usize {
     let at_sym = *map.iter().find(|(_,&v)| v == '@').expect("No @").0;
 
     map.insert(at_sym, '#');
-    map.insert(at_sym.step(Dir::U), '#');
-    map.insert(at_sym.step(Dir::D), '#');
-    map.insert(at_sym.step(Dir::L), '#');
-    map.insert(at_sym.step(Dir::R), '#');
+    map.insert(at_sym.up(), '#');
+    map.insert(at_sym.down(), '#');
+    map.insert(at_sym.left(), '#');
+    map.insert(at_sym.right(), '#');
     let points = [
         at_sym.up().left(),
         at_sym.up().right(),
@@ -65,14 +64,13 @@ pub fn p2(input: &str) -> usize {
     solve(&map,&points)
 }
 pub fn solve(map: &HashMap<Point,char>, starts: &[Point]) -> usize {
-    let key_count = map.iter().filter(|(_, c)| c.is_lowercase()).count();
     let mut known_bests: HashMap<(Vec<Point>, BTreeSet<char>), usize> = HashMap::new();
     known_bests.insert((starts.to_vec(), BTreeSet::new()), 0);
-    for _ in 0..key_count {
+    loop {
         let mut new_known_bests : HashMap<(Vec<Point>, BTreeSet<char>), usize> = HashMap::new();
         for ((poss, keys), v) in known_bests.iter() {
             for (ix,bot) in poss.iter().enumerate(){
-                let available_keys = bfs(&map, *bot, &keys);
+                let available_keys = search(&map, *bot, &keys);
                 for (new_k, (d, p)) in available_keys.iter() {
                     let mut new_keys = keys.clone();
                     new_keys.insert(*new_k);
@@ -84,6 +82,9 @@ pub fn solve(map: &HashMap<Point,char>, starts: &[Point]) -> usize {
                         .or_insert(d + v);
                 }
             }
+        }
+        if new_known_bests.is_empty() {
+            break;
         }
         known_bests = new_known_bests;
     }
