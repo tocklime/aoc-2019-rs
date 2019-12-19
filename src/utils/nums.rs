@@ -1,3 +1,4 @@
+use num::Integer;
 use std::ops::AddAssign;
 pub fn int_to_digits(i: usize) -> Vec<usize> {
     let mut v = Vec::with_capacity(10);
@@ -24,34 +25,29 @@ pub fn de_prefixsum<T: AddAssign + Default + Copy>(input: &[T]) -> Vec<T> {
     ans
 }
 
-pub fn find_upper(func: &impl Fn(usize) -> usize, target: usize) -> usize {
-    let mut upper = 1;
+pub fn find_upper<T: Integer + Copy>(func: &impl Fn(T) -> T, target: T) -> T {
+    let mut upper = T::one();
     loop {
         let output = func(upper);
-        if output > target {
+        if output >= target {
             return upper;
         }
-        upper *= 2;
+        upper = upper + upper;
     }
 }
-pub fn bin_search(
-    func: &impl Fn(usize) -> usize,
-    target: usize,
-    upper: usize,
-    lower: usize,
-) -> usize {
-    let candidate = (upper + lower) / 2;
+pub fn bin_search<T: Integer + Copy>(func: &impl Fn(T) -> T, target: T, upper: T, lower: T) -> T {
+    let candidate = (upper + lower) / (T::one() + T::one());
     if candidate == lower {
         return lower;
     }
     let val = func(candidate);
-    if val > target {
+    if val >= target {
         bin_search(func, target, candidate, lower)
     } else {
         bin_search(func, target, upper, candidate)
     }
 }
-pub fn unbounded_bin_search(func: impl Fn(usize) -> usize, target: usize) -> usize {
+pub fn unbounded_bin_search<T: Integer + Copy>(func: impl Fn(T) -> T, target: T) -> T {
     let upper = find_upper(&func, target);
-    bin_search(&func, target, upper, upper / 2)
+    bin_search(&func, target, upper, upper / (T::one() + T::one()))
 }

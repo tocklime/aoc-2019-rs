@@ -1,5 +1,5 @@
-use crate::utils::points::as_point_map;
-use crate::utils::prelude::*;
+use std::collections::{HashMap,HashSet,BTreeSet};
+use crate::utils::points::{Point,as_point_map};
 use std::cmp::min;
 
 pub fn search2(
@@ -9,7 +9,7 @@ pub fn search2(
     let mut points = std::collections::VecDeque::new();
     points.push_back((start, 0, BTreeSet::new()));
     let mut min_dist_map: HashMap<Point, (char, usize, BTreeSet<char>)> = HashMap::new();
-    let mut been: BTreeSet<Point> = BTreeSet::new();
+    let mut been: HashSet<Point> = HashSet::new();
     while !points.is_empty() {
         let (pos, count, keys) = points.pop_front().unwrap();
         been.insert(pos);
@@ -71,7 +71,6 @@ pub fn search(
         .cloned()
         .collect()
 }
-use std::collections::BTreeSet;
 #[aoc(day18, part1)]
 pub fn p1(input: &str) -> usize {
     let map = as_point_map(input);
@@ -112,18 +111,14 @@ pub fn solve(map: &HashMap<Point, char>, starts: &[Point]) -> usize {
         })
         .collect();
 
-    //println!("INFO: {:?}", info);
     loop {
         let mut new_known_bests: HashMap<(Vec<Point>, BTreeSet<char>), usize> = HashMap::new();
         for ((poss, keys), v) in known_bests.iter() {
             for (ix, bot) in poss.iter().enumerate() {
-                let available_keys = info[bot].iter().filter(|(&a, (c, _, hs))| {
+                let available_keys = info[bot].iter().filter(|(_, (c, _, hs))| {
                     !keys.contains(c) && hs.iter().all(|&i| keys.contains(&i.to_ascii_lowercase()))
                 });
-                //println!("Options: {:#?}", available_keys);
-
-                //let available_keys = search(&map, *bot, &keys);
-                for (new_p, (c, d, _req_keys)) in available_keys {
+                for (new_p, (c, d, _)) in available_keys {
                     let mut new_keys = keys.clone();
                     new_keys.insert(*c);
                     let mut new_ps = poss.clone();
@@ -138,7 +133,6 @@ pub fn solve(map: &HashMap<Point, char>, starts: &[Point]) -> usize {
         if new_known_bests.is_empty() {
             break;
         }
-        //println!("{:?}", new_known_bests);
         known_bests = new_known_bests;
     }
     *known_bests.values().min().expect("No answers?")

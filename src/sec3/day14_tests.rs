@@ -29,9 +29,7 @@ const E3: &str = "157 ORE => 5 NZVS
 3 DCFZ, 7 NZVS, 5 HKGWZ, 10 PSHF => 8 KHKGT";
 #[test]
 pub fn d14p1test() {
-    for _ in 0..1000 {
-        assert_eq!(p1(&E1), 31);
-    }
+    assert_eq!(p1(&E1), 31);
     assert_eq!(p1(&E2), 165);
     assert_eq!(p1(&E3), 13312);
 }
