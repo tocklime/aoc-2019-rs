@@ -1,6 +1,7 @@
 use crate::utils::points::{as_point_map, Point};
 use crate::utils::prelude::*;
-
+use std::cmp::min;
+use std::collections::hash_map::Entry;
 #[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum Teleport<'a> {
     Unconnected(&'a Telepad),
@@ -151,36 +152,47 @@ pub fn solve(input: &str, depth_step: isize) -> u32 {
     let end = teleport_names["ZZ"].single();
 
     let mut points = std::collections::VecDeque::new();
-    points.push_back((start, 0, Vec::new()));
-    //let mut min_dist_map:HashMap<(Point,isize), = HashMap::new();
-    //min_dist_map.insert((start, 0), Vec::new());
-    loop {
-        let (pos, depth, path) = points.pop_front().unwrap();
+    points.push_back((start, 0, 0));
+    let mut min_dist_map: HashMap<(Point, isize), u32> = HashMap::new();
+    let mut best_dist = std::u32::MAX;
+    while !points.is_empty() {
+        let (pos, depth, dist) = points.pop_front().unwrap();
         if pos == end && depth == 0 {
-            break path.iter().map(|(_, _, dist)| dist).sum();
+            best_dist = min(best_dist, dist);
+        }
+        if dist > best_dist {
+            continue;
+        }
+        match min_dist_map.entry((pos, depth)) {
+            Entry::Vacant(x) => {
+                x.insert(dist);
+            }
+            Entry::Occupied(mut x) if *x.get() >= dist => {
+                x.insert(dist);
+            }
+            _ => {
+                continue;
+            }
         }
         //opts from here:
         walking[&pos]
             .iter()
-            .for_each(|(&tp, &dist)| match teleport_names.get(&tp.name) {
+            .for_each(|(&tp, &step_dist)| match teleport_names.get(&tp.name) {
                 Some(Teleport::Unconnected(_)) => {
                     if depth == 0 {
-                        let mut path = path.clone();
-                        path.push((tp.output, depth, dist));
-                        points.push_back((tp.output, depth, path));
+                        points.push_back((tp.output, depth, dist + step_dist));
                     }
                 }
                 Some(t) => {
                     let (new_p, dc) = t.teleport(tp.input);
                     if depth + dc >= 0 {
-                        let mut path = path.clone();
-                        path.push((new_p, depth + dc, dist + 1));
-                        points.push_back((new_p, depth + dc, path));
+                        points.push_back((new_p, depth + dc, 1 + dist + step_dist));
                     }
                 }
                 _ => {}
             })
     }
+    min_dist_map[&(end, 0)]
 }
 //6124 too low
 
