@@ -100,11 +100,7 @@ pub fn solve(input: &str, depth_step: isize) -> u32 {
                         input: *p,
                         output: output,
                         name: name,
-                        depth_change: if is_outer {
-                            -1 * depth_step
-                        } else {
-                            1 * depth_step
-                        },
+                        depth_change: depth_step * (if is_outer { -1 } else { 1 }),
                     })
                 } else {
                     None
