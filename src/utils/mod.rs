@@ -1,3 +1,4 @@
+pub mod algorithms;
 pub mod iter;
 pub mod log;
 pub mod nums;

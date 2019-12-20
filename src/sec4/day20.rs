@@ -1,69 +1,13 @@
+use crate::utils::algorithms::{bfs_dist_all, to_lookup};
 use crate::utils::points::{as_point_map, Point};
 use crate::utils::prelude::*;
-use std::cmp::min;
-use std::collections::hash_map::Entry;
-#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
-pub enum Teleport<'a> {
-    Unconnected(&'a Telepad),
-    Connects(&'a Telepad, &'a Telepad),
-}
+use pathfinding::prelude::*;
+use std::hash::Hash;
+
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct Telepad {
-    input: Point,
-    output: Point,
-    name: String,
+    pos: Point,
     depth_change: isize,
-}
-
-impl<'a> Teleport<'a> {
-    pub fn connect(self, o: &'a Telepad) -> Self {
-        match self {
-            Teleport::Unconnected(p) => Teleport::Connects(p, o),
-            Teleport::Connects(a, b) => panic!(
-                "Teleport already connected from {:?} to {:?} so can't connect {:?}",
-                a, b, o
-            ),
-        }
-    }
-    pub fn single(self) -> Point {
-        match self {
-            Teleport::Unconnected(p) => p.output,
-            _ => panic!("Cannot get single of connected point"),
-        }
-    }
-    pub fn teleport(self, p: Point) -> (Point, isize) {
-        if let Teleport::Connects(a, b) = self {
-            if p == a.input {
-                (b.output, a.depth_change)
-            } else if p == b.input {
-                (a.output, b.depth_change)
-            } else {
-                panic!("Not this teleport")
-            }
-        } else {
-            panic!("Teleport not connected")
-        }
-    }
-}
-
-/// Performs a breadth first search of the map, and returns a map of point to distance from the start.
-pub fn bfs_depth(map: &HashMap<Point, char>, start: Point) -> HashMap<Point, u32> {
-    let mut points = std::collections::VecDeque::new();
-    points.push_back((start, 0));
-    let mut min_dist_map = HashMap::new();
-    min_dist_map.insert(start, 0);
-    while !points.is_empty() {
-        let (pos, count) = points.pop_front().unwrap();
-        Dir::all().iter().for_each(|d| {
-            let p2 = pos + d.as_point_delta();
-            if map.get(&p2) == Some(&'.') && !min_dist_map.contains_key(&p2) {
-                min_dist_map.insert(p2, count + 1);
-                let t = (p2, count + 1);
-                points.push_back(t);
-            }
-        });
-    }
-    min_dist_map
 }
 
 #[aoc(day20, part1)]
@@ -78,127 +22,103 @@ pub fn solve(input: &str, depth_step: isize) -> u32 {
     let maz = as_point_map(input);
     let width = input.lines().nth(0).unwrap().len() as isize;
     let height = input.lines().count() as isize;
-    let teleport_points: Vec<Telepad> = maz
-        .iter()
-        .filter_map(|(p, c)| {
-            if c.is_ascii_alphabetic() {
-                let n: Option<Vec<_>> = p.neighbours().iter().map(|x| maz.get(x)).collect();
-                if let Some(n) = n {
-                    let a = if n[0].is_ascii_alphabetic() && n[2] == &'.' {
-                        Some((format!("{}{}", c, n[0]), p.down()))
-                    } else if n[2].is_ascii_alphabetic() && n[0] == &'.' {
-                        Some((format!("{}{}", n[2], c), p.up()))
-                    } else if n[1].is_ascii_alphabetic() && n[3] == &'.' {
-                        Some((format!("{}{}", n[1], c), p.right()))
-                    } else if n[3].is_ascii_alphabetic() && n[1] == &'.' {
-                        Some((format!("{}{}", c, n[3]), p.left()))
-                    } else {
-                        None
-                    };
-                    let is_outer =
-                        p.0 < 3 || ((width - p.0) < 3) || p.1 < 3 || ((height - p.1) < 3);
-                    a.map(|(name, output)| Telepad {
-                        input: *p,
-                        output: output,
-                        name: name,
-                        depth_change: depth_step * (if is_outer { -1 } else { 1 }),
-                    })
+    let telepads = to_lookup::<_, String, Telepad>(maz.iter().filter_map(|(p, c)| {
+        if c.is_ascii_alphabetic() {
+            let n: Option<Vec<_>> = p.neighbours().iter().map(|x| maz.get(x)).collect();
+            if let Some(n) = n {
+                let a = if n[0].is_ascii_alphabetic() && n[2] == &'.' {
+                    Some((format!("{}{}", c, n[0]), p.down()))
+                } else if n[2].is_ascii_alphabetic() && n[0] == &'.' {
+                    Some((format!("{}{}", n[2], c), p.up()))
+                } else if n[1].is_ascii_alphabetic() && n[3] == &'.' {
+                    Some((format!("{}{}", n[1], c), p.right()))
+                } else if n[3].is_ascii_alphabetic() && n[1] == &'.' {
+                    Some((format!("{}{}", c, n[3]), p.left()))
                 } else {
                     None
-                }
+                };
+                let is_outer = p.0 < 3 || ((width - p.0) < 3) || p.1 < 3 || ((height - p.1) < 3);
+                a.map(|(name, pos)| {
+                    (
+                        name.to_owned(),
+                        Telepad {
+                            pos,
+                            depth_change: if is_outer { -1 } else { 1 },
+                        },
+                    )
+                })
             } else {
                 None
             }
+        } else {
+            None
+        }
+    }));
+    let teleports: HashMap<Point, (Point, isize)> = telepads
+        .values()
+        .filter(|vs| vs.len() == 2)
+        .flat_map(|vs| {
+            vec![
+                (vs[0].pos, (vs[1].pos, vs[0].depth_change)),
+                (vs[1].pos, (vs[0].pos, vs[1].depth_change)),
+            ]
         })
         .collect();
-    let walking = teleport_points
-        .iter()
+
+    let start = telepads["AA"][0].pos;
+    let end = telepads["ZZ"][0].pos;
+    let walking: HashMap<Point, HashMap<Point, (u32, isize)>> = telepads
+        .values()
+        .flatten()
         .map(|tp| {
-            let s = bfs_depth(&maz, tp.output);
-            let filtered = teleport_points
+            let s: HashMap<Point, u32> = bfs_dist_all(&tp.pos, |p| {
+                p.neighbours()
+                    .iter()
+                    .filter(|n| maz.get(n) == Some(&'.'))
+                    .map(|&n| (n, 1))
+                    .collect_vec()
+            });
+            let filtered = s
                 .iter()
-                .filter_map(|x| {
-                    if x == tp {
-                        return None;
+                .filter_map(|(p, &dist)| {
+                    if *p == end {
+                        Some((*p, (dist, 0)))
+                    } else {
+                        teleports
+                            .get(p)
+                            .map(|(p, dc)| (*p, (dist + 1, *dc * depth_step)))
                     }
-                    if let Some(d) = s.get(&x.output) {
-                        Some((x, *d))
+                })
+                .collect::<HashMap<Point, (u32, isize)>>();
+            (tp.pos, filtered)
+        })
+        .collect();
+    dijkstra(
+        &(start, 0),
+        |(pos, depth)| {
+            walking[pos]
+                .iter()
+                .filter_map(|(p, (dist, dc))| {
+                    let new_depth = depth + dc;
+                    if new_depth >= 0 {
+                        Some(((*p, new_depth), *dist))
                     } else {
                         None
                     }
                 })
-                .collect::<HashMap<_, _>>();
-            (tp.output, filtered)
-        })
-        .collect::<HashMap<_, _>>();
-    let mut teleport_names: HashMap<String, Teleport> = HashMap::new();
-    for t in teleport_points.iter() {
-        teleport_names
-            .entry(t.name.to_owned())
-            .and_modify(|x| *x = x.connect(t))
-            .or_insert(Teleport::Unconnected(t));
-    }
-    let mut teleport_links: HashMap<Point, (Point, isize)> = HashMap::new();
-    for t in teleport_names.values() {
-        match t {
-            Teleport::Unconnected(_) => (),
-            Teleport::Connects(a, b) => {
-                teleport_links.insert(a.input, (b.output, a.depth_change));
-                teleport_links.insert(b.input, (a.output, b.depth_change));
-            }
-        }
-    }
-    let start = teleport_names["AA"].single();
-    let end = teleport_names["ZZ"].single();
-
-    let mut points = std::collections::VecDeque::new();
-    points.push_back((start, 0, 0));
-    let mut min_dist_map: HashMap<(Point, isize), u32> = HashMap::new();
-    let mut best_dist = std::u32::MAX;
-    while !points.is_empty() {
-        let (pos, depth, dist) = points.pop_front().unwrap();
-        if pos == end && depth == 0 {
-            best_dist = min(best_dist, dist);
-        }
-        if dist > best_dist {
-            continue;
-        }
-        match min_dist_map.entry((pos, depth)) {
-            Entry::Vacant(x) => {
-                x.insert(dist);
-            }
-            Entry::Occupied(mut x) if *x.get() >= dist => {
-                x.insert(dist);
-            }
-            _ => {
-                continue;
-            }
-        }
-        //opts from here:
-        walking[&pos]
-            .iter()
-            .for_each(|(&tp, &step_dist)| match teleport_names.get(&tp.name) {
-                Some(Teleport::Unconnected(_)) => {
-                    if depth == 0 {
-                        points.push_back((tp.output, depth, dist + step_dist));
-                    }
-                }
-                Some(t) => {
-                    let (new_p, dc) = t.teleport(tp.input);
-                    if depth + dc >= 0 {
-                        points.push_back((new_p, depth + dc, 1 + dist + step_dist));
-                    }
-                }
-                _ => {}
-            })
-    }
-    min_dist_map[&(end, 0)]
+                .collect_vec()
+        },
+        |(p, d)| *p == end && *d == 0,
+    )
+    .expect("No solution")
+    .1
 }
-//6124 too low
 
-#[test]
-pub fn d20p1tests() {
-    let a = "                   A               
+#[cfg(test)]
+mod test {
+    #[test]
+    pub fn d20p1tests() {
+        let a = "                   A               
                    A               
   #################.#############  
   #.#...#...................#.#.#  
@@ -236,12 +156,12 @@ YN......#               VT..#....QG
            B   J   C               
            U   P   P               
 ";
-    //   assert_eq!(p1(a), 58);
-}
+        assert_eq!(super::p1(a), 58);
+    }
 
-#[test]
-pub fn d20p2tests() {
-    let triv = "       A       
+    #[test]
+    pub fn d20p2tests() {
+        let triv = "       A       
        A       
   #####.#####  
   #####.#####  
@@ -253,7 +173,7 @@ BC..## BC....ZZ
                
                
 ";
-    let a = "             Z L X W       C                 
+        let a = "             Z L X W       C                 
              Z P Q B       K                 
   ###########.#.#.#.#######.###############  
   #...#.......#.#.......#.#.......#.#.#...#  
@@ -291,6 +211,7 @@ RE....#.#                           #......RF
                A O F   N                     
                A A D   M                     
 ";
-    assert_eq!(p2(triv), 11);
-    assert_eq!(p2(a), 396);
+        assert_eq!(super::p2(triv), 11);
+        assert_eq!(super::p2(a), 396);
+    }
 }
