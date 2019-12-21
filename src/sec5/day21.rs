@@ -2,16 +2,16 @@ use crate::utils::prelude::*;
 
 pub fn go(input: &str, stringscript: &str) -> Option<i32> {
     let mut c: Computer = input.parse().unwrap();
-    c.give_input(
-        stringscript
-            .trim_start()
-            .chars()
-            .map(|x| x as i32)
-            .collect(),
-    );
-    c.run();
-    let output = c.take_output();
-    output.iter().find(|&&x| x > 255).cloned()
+    c.with_string_input(stringscript)
+        .run()
+        .get_output()
+        .iter()
+        .find(|&&x| x > 255)
+        .cloned()
+        .or_else(|| {
+            println!("{}", c.output_as_string());
+            None
+        })
 }
 #[aoc(day21, part1)]
 pub fn p1(input: &str) -> i32 {
@@ -19,16 +19,15 @@ pub fn p1(input: &str) -> i32 {
     go(
         input,
         "\
-NOT A J
-NOT B T
-OR T J
-NOT C T
-OR T J
+OR A J
+AND B J
+AND C J
+NOT J J
 AND D J
 WALK
 ",
     )
-    .unwrap()
+    .unwrap_or(0)
 }
 
 #[aoc(day21, part2)]
@@ -38,14 +37,12 @@ pub fn p2a(input: &str) -> i32 {
     go(
         input,
         "\
-NOT A T 
-NOT B J
-OR T J
-NOT C T
-OR T J
+OR A J
+AND B J
+AND C J
+NOT J J
 AND D J
-AND J T
-AND E T
+OR E T
 OR H T
 AND T J
 RUN

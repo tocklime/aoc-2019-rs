@@ -1,20 +1,11 @@
+use crate::utils::points::as_point_map;
 use crate::utils::prelude::*;
 
 #[aoc(day17, part1)]
 pub fn p1(input: &str) -> isize {
     let mut c: Computer = input.parse().unwrap();
-    c.run();
-    let output = c.take_output();
-    let as_chars: String = output.iter().map(|&x| (x as u8) as char).collect();
-    let g: HashMap<Point, char> = as_chars
-        .lines()
-        .enumerate()
-        .flat_map(move |(y, line)| {
-            line.chars()
-                .enumerate()
-                .map(move |(x, c)| (Point(x as isize, y as isize), c))
-        })
-        .collect();
+    let output = c.run().output_as_string();
+    let g = as_point_map(&output);
     g.iter()
         .filter(|(_, &c)| c == '#')
         .filter(|(p, _)| {
@@ -39,7 +30,7 @@ R,4,R,8,R,10,R,12
 R,12,R,4,L,12,L,12
 n
 ";
-    c.give_input(icode.trim_start().chars().map(|x| x as i32).collect());
-    c.run();
-    c.get_last_output()
+    c.with_string_input(icode.trim_start())
+        .run()
+        .get_last_output()
 }

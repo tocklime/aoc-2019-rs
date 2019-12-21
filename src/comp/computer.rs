@@ -136,6 +136,13 @@ where
         std::mem::replace(&mut self.fixed_input, input);
         self
     }
+    pub fn with_string_input(&mut self, input: &str) -> &mut Self {
+        self.give_input(input.bytes().map(|x| x.into()).collect());
+        self
+    }
+    pub fn output_as_string(&self) -> String {
+        self.output.iter().map(|&x| x.as_char()).collect()
+    }
     pub fn with_input(&mut self, x: MemType) -> &mut Self {
         self.fixed_input.push(x);
         self
