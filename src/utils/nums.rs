@@ -1,5 +1,7 @@
-use num::Integer;
-use std::ops::AddAssign;
+use num::{Integer, Num, CheckedSub, CheckedAdd, CheckedMul};
+use std::ops::{AddAssign, Shr, Rem};
+use std::fmt::Debug;
+
 pub fn int_to_digits(i: usize) -> Vec<usize> {
     let mut v = Vec::with_capacity(10);
     let mut r = i;
@@ -51,3 +53,54 @@ pub fn unbounded_bin_search<T: Integer + Copy>(func: impl Fn(T) -> T, target: T)
     let upper = find_upper(&func, target);
     bin_search(&func, target, upper, upper / (T::one() + T::one()))
 }
+pub fn mod_pow<T>(mut base: T, mut exp: T, modulus: T) -> T
+    where T: Num + Copy + Shr<Output = T> + From<u8> + PartialOrd
+{
+    if modulus == T::one() {
+        return T::zero();
+    }
+    let mut result = T::one();
+    base = base % modulus;
+    while exp > T::zero() {
+        if exp % 2.into() == T::one() {
+            result = result * base % modulus;
+        }
+        exp = exp >> T::one();
+        base = base * base % modulus
+    }
+    result
+}
+pub fn mod_mul<T>(a : T, b: T, m : T) -> T
+    where T : CheckedMul + Rem<Output = T> + Debug
+{
+    match a.checked_mul(&b){
+        None => panic!("mod_mul overflowed with {:?}x{:?}%{:?}",a,b,m),
+        Some(ab) => ab % m
+    }
+}
+pub fn mod_add<T>(a:T, b: T, m: T) -> T
+    where T : CheckedAdd + Rem<Output = T> + Debug
+{
+    match a.checked_add(&b){
+        None => panic!("mod_add overflowed with {:?}+{:?}%{:?}",a,b,m),
+        Some(ab) => ab % m
+    }
+}
+pub fn mod_sub<T>(a: T, b: T, m: T) -> T
+    where T : CheckedSub + Rem<Output = T> + Debug
+{
+
+    match a.checked_sub(&b){
+        None => panic!("mod_sub underflowed with {:?}-{:?}%{:?}",a,b,m),
+        Some(ab) => ab % m
+    }
+}
+
+
+pub fn mod_inv<T>(base: T, modulus: T) -> T
+    where T: Num + Copy + Shr<Output = T> + From<u8> + PartialOrd
+{
+    mod_pow(base, modulus - 2.into(), modulus)
+}
+
+
