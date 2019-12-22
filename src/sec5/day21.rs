@@ -1,8 +1,8 @@
-use crate::utils::prelude::*;
+use crate::comp::Computer;
 
-pub fn go(input: &str, stringscript: &str) -> Option<i32> {
+pub fn go(input: &str, string_script: &str) -> Option<i32> {
     let mut c: Computer = input.parse().unwrap();
-    c.with_string_input(stringscript)
+    c.with_string_input(string_script)
         .run()
         .get_output()
         .iter()

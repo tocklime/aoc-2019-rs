@@ -1,7 +1,8 @@
 use crate::utils::algorithms::{bfs_dist_all, to_lookup};
 use crate::utils::points::{as_point_map, Point};
-use crate::utils::prelude::*;
-use pathfinding::prelude::*;
+use crate::utils::prelude::HashMap;
+use itertools::Itertools;
+use pathfinding::directed::dijkstra::dijkstra;
 use std::hash::Hash;
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
