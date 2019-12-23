@@ -4,6 +4,7 @@ use crate::utils::prelude::HashMap;
 use itertools::Itertools;
 use pathfinding::directed::dijkstra::dijkstra;
 use std::hash::Hash;
+use std::convert::TryInto;
 
 #[derive(Debug, Eq, PartialEq, Hash, Clone)]
 pub struct Telepad {
@@ -21,8 +22,8 @@ pub fn p2(input: &str) -> u32 {
 }
 pub fn solve(input: &str, depth_step: isize) -> u32 {
     let maz = as_point_map(input);
-    let width = input.lines().nth(0).unwrap().len() as isize;
-    let height = input.lines().count() as isize;
+    let width:isize = input.lines().nth(0).unwrap().len().try_into().unwrap();
+    let height:isize = input.lines().count().try_into().unwrap();
     let telepads = to_lookup::<_, String, Telepad>(maz.iter().filter_map(|(p, c)| {
         if c.is_ascii_alphabetic() {
             let n: Option<Vec<_>> = p.neighbours().iter().map(|x| maz.get(x)).collect();
@@ -57,12 +58,15 @@ pub fn solve(input: &str, depth_step: isize) -> u32 {
     }));
     let teleports: HashMap<Point, (Point, isize)> = telepads
         .values()
-        .filter(|vs| vs.len() == 2)
         .flat_map(|vs| {
-            vec![
-                (vs[0].pos, (vs[1].pos, vs[0].depth_change)),
-                (vs[1].pos, (vs[0].pos, vs[1].depth_change)),
-            ]
+            if vs.len() == 2 {
+                vec![
+                    (vs[0].pos, (vs[1].pos, vs[0].depth_change)),
+                    (vs[1].pos, (vs[0].pos, vs[1].depth_change)),
+                ]
+            }else {
+                vec![]
+            }
         })
         .collect();
 
@@ -75,8 +79,13 @@ pub fn solve(input: &str, depth_step: isize) -> u32 {
             let s: HashMap<Point, u32> = bfs_dist_all(&tp.pos, |p| {
                 p.neighbours()
                     .iter()
-                    .filter(|n| maz.get(n) == Some(&'.'))
-                    .map(|&n| (n, 1))
+                    .filter_map(|n|{
+                        if maz.get(n) == Some(&'.') {
+                            Some((*n,1))
+                        }else{
+                            None
+                        }
+                    })
                     .collect_vec()
             });
             let filtered = s

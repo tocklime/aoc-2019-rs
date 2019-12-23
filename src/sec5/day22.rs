@@ -1,9 +1,10 @@
 use crate::utils::nums::{mod_add, mod_mul, mod_inv, mod_pow};
+use std::convert::TryInto;
 
 #[aoc(day22, part1)]
 pub fn p1(input: &str) -> usize {
     let card_count = 10007_u32;
-    let (offset, increment) = handle_deck(input, card_count as u128);
+    let (offset, increment) = handle_deck(input, card_count.try_into().unwrap());
     let mut deck = vec![0; card_count as usize];
     let mut cur_val = offset;
     for i in 0..card_count {
@@ -18,8 +19,8 @@ pub fn handle_deck(input: &str, deck_size: u128) -> (u128, u128) {
     for l in input.trim().lines() {
         //println!("Deck now {:?} {:?}   {}", offset, increment, l);
         if l.trim().starts_with("deal into new stack") {
-            increment = mod_mul(increment, deck_size-1,deck_size);
-            offset = mod_add(increment,offset,deck_size);
+            increment = mod_mul(&increment, &(deck_size-1),deck_size);
+            offset = mod_add(&increment,&offset,deck_size);
         } else if l.trim().starts_with("cut") {
             let n = l
                 .split(' ')
@@ -27,8 +28,8 @@ pub fn handle_deck(input: &str, deck_size: u128) -> (u128, u128) {
                 .unwrap()
                 .parse::<i128>()
                 .expect("int for cut");
-            let as_u = n.rem_euclid(deck_size as i128) as u128;
-            offset = mod_add(offset, mod_mul(increment, as_u, deck_size), deck_size);
+            let as_u = n.rem_euclid(deck_size.try_into().unwrap()).try_into().unwrap();
+            offset = mod_add(&offset, &mod_mul(&increment, &as_u, deck_size), deck_size);
 
         } else if l.trim().starts_with("deal with increment") {
             let n = l
@@ -37,7 +38,7 @@ pub fn handle_deck(input: &str, deck_size: u128) -> (u128, u128) {
                 .unwrap()
                 .parse::<u128>()
                 .expect("int for deal");
-            increment = mod_mul(increment, mod_inv(n,deck_size),deck_size);
+            increment = mod_mul(&increment, &mod_inv(n,deck_size),deck_size);
         } else {
             panic!("Unknown instr: {}", l);
         }
@@ -57,15 +58,15 @@ pub fn p2(input: &str) -> u128 {
         deck_size);
     let final_offset =
         mod_mul(
-            mod_mul(
-                offset,
-                num,
+            &mod_mul(
+                &offset,
+                &num,
                 deck_size),
-            denom,
+            &denom,
             deck_size);
-    mod_add(final_offset,
-            mod_mul(final_increment,
-                    card,
+    mod_add(&final_offset,
+            &mod_mul(&final_increment,
+                    &card,
                     deck_size),
             deck_size)
 }

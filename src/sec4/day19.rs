@@ -11,7 +11,6 @@ pub fn calc(c: &Computer<isize>, p: Point) -> isize {
 #[aoc(day19, part1)]
 pub fn p1(input: &str) -> isize {
     let c: Computer<isize> = input.parse().unwrap();
-    println!("{}", c.disassembly());
     (0..50)
         .cartesian_product(0..50)
         .map(|(x, y)| calc(&c, Point(x, y)))

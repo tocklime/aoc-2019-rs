@@ -300,7 +300,7 @@ pub fn as_point_map(input: &str) -> HashMap<Point, char> {
         .flat_map(move |(y, line)| {
             line.chars()
                 .enumerate()
-                .map(move |(x, c)| (Point(x as isize, y as isize), c))
+                .map(move |(x, c)| (Point(x.try_into().unwrap() , y.try_into().unwrap()), c))
         })
         .collect()
 }

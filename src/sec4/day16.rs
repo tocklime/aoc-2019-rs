@@ -4,7 +4,7 @@ use std::cmp::{max,min};
 
 #[aoc_generator(day16)]
 pub fn gen(input: &str) -> Vec<usize> {
-    input.bytes().map(|x| (x - b'0').try_into().unwrap()).collect()
+    input.trim().bytes().map(|x| (x - b'0').try_into().unwrap()).collect()
 }
 #[aoc(day16, part1)]
 pub fn p1(input: &[usize]) -> usize {

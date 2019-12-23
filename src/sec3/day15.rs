@@ -4,6 +4,7 @@ use log::info;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::convert::TryInto;
+use std::hash::BuildHasher;
 
 const WALL: char = '█';
 const SPACE: char = '.';
@@ -30,7 +31,7 @@ pub fn try_move(c: &mut Computer<i32>, d: Dir) -> char {
 }
 
 /// Performs a breadth first search of the map, and returns a map of point to distance from the start.
-pub fn bfs_depth(map: &HashMap<Point, char>, start: Point) -> HashMap<Point, u32> {
+pub fn bfs_depth<S: BuildHasher>(map: &HashMap<Point, char, S>, start: Point) -> HashMap<Point, u32> {
     let mut points = std::collections::VecDeque::new();
     points.push_back((start, 0));
     let mut min_dist_map = HashMap::new();
@@ -97,7 +98,7 @@ pub fn explore(input: &str) -> HashMap<Point, char> {
 }
 
 #[aoc(day15, part1)]
-pub fn p1(input: &HashMap<Point, char>) -> u32 {
+pub fn p1<S: BuildHasher>(input: &HashMap<Point, char, S>) -> u32 {
     let (o_pos, _) = input
         .iter()
         .find(|(_, &v)| v == OXYGEN)
@@ -105,7 +106,7 @@ pub fn p1(input: &HashMap<Point, char>) -> u32 {
     bfs_depth(input, Point(0, 0))[o_pos]
 }
 #[aoc(day15, part2)]
-pub fn p2(input: &HashMap<Point, char>) -> u32 {
+pub fn p2<S:BuildHasher>(input: &HashMap<Point, char, S>) -> u32 {
     let (&o_pos, _) = input
         .iter()
         .find(|(_, &v)| v == OXYGEN)

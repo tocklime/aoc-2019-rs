@@ -7,15 +7,14 @@ pub fn p1(input: &str) -> isize {
     let output = c.run().output_as_string();
     let g = as_point_map(&output);
     g.iter()
-        .filter(|(_, &c)| c == '#')
-        .filter(|(p, _)| {
-            p.neighbours()
-                .iter()
-                .filter(|pn| g.get(pn) == Some(&'#'))
-                .count()
-                == 4
+        .filter_map(|(p, c)| {
+            if c == &'#' {
+                let nc = p.neighbours().iter().filter(|pn| g.get(pn) == Some(&'#')).count();
+                if nc == 4 {
+                    Some(p.0 * p.1)
+                } else { None }
+            } else { None }
         })
-        .map(|(p, _)| p.0 * p.1)
         .sum()
 }
 

@@ -1,9 +1,10 @@
-use std::collections::{HashMap,HashSet,BTreeSet};
-use crate::utils::points::{Point,as_point_map};
+use std::collections::{HashMap, HashSet, BTreeSet};
+use crate::utils::points::{Point, as_point_map};
 use std::cmp::min;
+use std::hash::BuildHasher;
 
-pub fn search2(
-    map: &HashMap<Point, char>,
+pub fn search2<S: BuildHasher>(
+    map: &HashMap<Point, char, S>,
     start: Point,
 ) -> HashMap<Point, (char, usize, BTreeSet<char>)> {
     let mut points = std::collections::VecDeque::new();
@@ -35,8 +36,9 @@ pub fn search2(
     }
     min_dist_map
 }
-pub fn search(
-    map: &HashMap<Point, char>,
+
+pub fn search<S : BuildHasher>(
+    map: &HashMap<Point, char, S>,
     start: Point,
     keys: &BTreeSet<char>,
 ) -> HashMap<char, (usize, Point)> {
@@ -71,12 +73,14 @@ pub fn search(
         .cloned()
         .collect()
 }
+
 #[aoc(day18, part1)]
 pub fn p1(input: &str) -> usize {
     let map = as_point_map(input);
     let at_sym = *map.iter().find(|(_, &v)| v == '@').expect("No @").0;
     solve(&map, &[at_sym])
 }
+
 #[aoc(day18, part2)]
 pub fn p2(input: &str) -> usize {
     let mut map = as_point_map(input);
@@ -95,7 +99,9 @@ pub fn p2(input: &str) -> usize {
     ];
     solve(&map, &points)
 }
-pub fn solve(map: &HashMap<Point, char>, starts: &[Point]) -> usize {
+
+type MapInfo = HashMap<Point, HashMap<Point,(char, usize, BTreeSet<char>)>>;
+pub fn solve<S : BuildHasher>(map: &HashMap<Point, char, S>, starts: &[Point]) -> usize {
     let mut known_bests: HashMap<(Vec<Point>, BTreeSet<char>), usize> = HashMap::new();
     known_bests.insert((starts.to_vec(), BTreeSet::new()), 0);
     let locations: Vec<Point> = map
@@ -103,7 +109,7 @@ pub fn solve(map: &HashMap<Point, char>, starts: &[Point]) -> usize {
         .filter_map(|(&k, &v)| if v.is_lowercase() { Some(k) } else { None })
         .chain(starts.iter().cloned())
         .collect();
-    let info: HashMap<Point, HashMap<Point, (char, usize, BTreeSet<char>)>> = locations
+    let info: MapInfo = locations
         .iter()
         .map(|&ap| {
             let reachable = search2(&map, ap);
@@ -113,7 +119,7 @@ pub fn solve(map: &HashMap<Point, char>, starts: &[Point]) -> usize {
 
     loop {
         let mut new_known_bests: HashMap<(Vec<Point>, BTreeSet<char>), usize> = HashMap::new();
-        for ((poss, keys), v) in known_bests.iter() {
+        for ((poss, keys), v) in &known_bests {
             for (ix, bot) in poss.iter().enumerate() {
                 let available_keys = info[bot].iter().filter(|(_, (c, _, hs))| {
                     !keys.contains(c) && hs.iter().all(|&i| keys.contains(&i.to_ascii_lowercase()))

@@ -10,17 +10,16 @@ where
     IN: IntoIterator<Item = (N, C)>,
 {
     let mut points: VecDeque<(N, C)> = VecDeque::new();
-    points.push_back((start.clone(), C::zero()));
+    points.push_back((*start, C::zero()));
     let mut min_dist_map: HashMap<N, C> = HashMap::new();
     min_dist_map.insert(start.clone(), C::zero());
     while !points.is_empty() {
         let (pos, count) = points.pop_front().unwrap();
         for (p2, c) in successors(&pos) {
-            if !min_dist_map.contains_key(&p2) {
-                min_dist_map.insert(p2, count + c);
-                let t = (p2.clone(), count + c);
-                points.push_back(t);
-            }
+            min_dist_map.entry(p2).or_insert_with(||{
+                points.push_back((p2,count+c));
+                count + c
+            });
         }
     }
     min_dist_map

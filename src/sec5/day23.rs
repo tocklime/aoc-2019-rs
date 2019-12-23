@@ -62,17 +62,14 @@ pub fn run<T>(input: &str, mut send_nat_y: T) -> i64
         }
         //...if the idle loop is done, and still nothing in queue, send NAT value.
         if send_q.is_empty() {
-            match nat {
-                Some(n) => {
-                    if send_nat_y(n.1) {
-                        break n.1;
-                    }
-                    send_q.push_back((0, n));
-                    nat = None;
+            if let Some(n) = nat {
+                if send_nat_y(n.1) {
+                    break n.1;
                 }
-                None => {
-                    panic!("Network quiet, nothing to send");
-                }
+                send_q.push_back((0, n));
+                nat = None;
+            }else {
+                panic!("Network quiet, nothing to send");
             }
         }
     }

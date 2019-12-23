@@ -70,7 +70,7 @@ pub fn mod_pow<T>(mut base: T, mut exp: T, modulus: T) -> T
     }
     result
 }
-pub fn mod_mul<T>(a : T, b: T, m : T) -> T
+pub fn mod_mul<T>(a : &T, b: &T, m : T) -> T
     where T : CheckedMul + Rem<Output = T> + Debug
 {
     match a.checked_mul(&b){
@@ -78,7 +78,7 @@ pub fn mod_mul<T>(a : T, b: T, m : T) -> T
         Some(ab) => ab % m
     }
 }
-pub fn mod_add<T>(a:T, b: T, m: T) -> T
+pub fn mod_add<T>(a:&T, b: &T, m: T) -> T
     where T : CheckedAdd + Rem<Output = T> + Debug
 {
     match a.checked_add(&b){
@@ -86,11 +86,11 @@ pub fn mod_add<T>(a:T, b: T, m: T) -> T
         Some(ab) => ab % m
     }
 }
-pub fn mod_sub<T>(a: T, b: T, m: T) -> T
+pub fn mod_sub<T>(a: &T, b: &T, m: T) -> T
     where T : CheckedSub + Rem<Output = T> + Debug
 {
 
-    match a.checked_sub(&b){
+    match a.checked_sub(b){
         None => panic!("mod_sub underflowed with {:?}-{:?}%{:?}",a,b,m),
         Some(ab) => ab % m
     }
