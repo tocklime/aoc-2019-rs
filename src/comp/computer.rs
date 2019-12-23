@@ -1,7 +1,7 @@
 use super::compmem::CompMem;
 use log::info;
 use std::cmp;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::fmt;
 use std::str::FromStr;
@@ -11,6 +11,7 @@ use std::sync::{mpsc, Arc, Mutex};
 use super::enums::*;
 use super::oparg::Arg;
 use super::opcode::OpCode;
+
 #[derive(Debug)]
 pub struct Computer<MemType = i32> {
     name: String,
@@ -24,6 +25,8 @@ pub struct Computer<MemType = i32> {
     output: Vec<MemType>,
     output_chan: Option<Sender<MemType>>,
     relative_base: isize,
+    default_input: Option<MemType>,
+    ips_since_last_mem_edit: HashSet<isize>,
 }
 
 impl<MT> Clone for Computer<MT>
@@ -43,6 +46,8 @@ where
             input_arc: None,
             output: self.output.clone(),
             output_chan: None,
+            default_input: self.default_input,
+            ips_since_last_mem_edit: self.ips_since_last_mem_edit.clone(),
         }
     }
 }
@@ -74,6 +79,8 @@ where
             output: vec![],
             output_chan: None,
             relative_base: 0,
+            default_input: None,
+            ips_since_last_mem_edit: HashSet::new(),
         };
         c.reset();
         c
@@ -147,6 +154,10 @@ where
         self.fixed_input.push(x);
         self
     }
+    pub fn with_default_input(&mut self, x: MemType) -> &mut Self {
+        self.default_input = Some(x);
+        self
+    }
     pub fn connect_output_from(
         &mut self,
         other: &mut Self,
@@ -191,6 +202,7 @@ where
         self.state = ComputerState::RUNNING;
         self.relative_base = 0;
         self.fixed_input = vec![];
+        self.ips_since_last_mem_edit.clear();
         self
     }
     pub fn current_op_with_args(&self) -> Op<MemType> {
@@ -228,6 +240,10 @@ where
     }
     pub fn abs_store(&mut self, offset: isize, value: MemType) {
         info!("STORE @{} = {}", offset, value);
+        if self.memory.get(&offset) == Some(&value) {
+            return;
+        }
+        self.ips_since_last_mem_edit.clear();
         *self.memory.entry(offset).or_insert_with(Default::default) = value;
     }
     pub fn inc_ip(&mut self, offset: isize) {
@@ -259,6 +275,9 @@ where
     pub fn step(&mut self) -> &mut Self {
         self.current_op_with_args().execute(self);
         self
+    }
+    pub fn seems_to_be_looping(&self) -> bool {
+        self.ips_since_last_mem_edit.contains(&self.instruction_pointer)
     }
     pub fn state(&self) -> ComputerState {
         self.state
@@ -296,6 +315,7 @@ where
         Self::try_from_mem_slice(m).unwrap()
     }
     pub fn execute(&self, c: &mut Computer<MemType>) {
+        c.ips_since_last_mem_edit.insert(c.instruction_pointer);
         let op_count = self.op.arg_count();
         let ps = self.args;
         let mut do_ip_inc = true;
@@ -309,7 +329,11 @@ where
                     c.fixed_input.remove(0)
                 } else if let Some(r) = &c.input_chan {
                     info!(target: "IO", "{} INP WAIT", c.name);
-                    r.recv().expect("No value on receiver")
+                    match c.default_input {
+                        Some(d) => r.try_recv().unwrap_or(d),
+                        None =>
+                            r.recv().expect("No value on receiver")
+                    }
                 } else if let Some(a) = &c.input_arc {
                     *a.lock().unwrap()
                 } else {
@@ -336,6 +360,7 @@ where
             }
             OpCode::MoveRelativeBase => {
                 c.relative_base += ps[0].get(c).as_isize();
+                c.ips_since_last_mem_edit.clear();
                 info!("RELBASE NOW {}", c.relative_base);
             }
             OpCode::Halt => {
