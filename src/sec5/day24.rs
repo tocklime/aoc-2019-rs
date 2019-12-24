@@ -13,7 +13,9 @@ pub fn gen(input: &str) -> HashSet<Point> {
 }
 
 #[aoc(day24, part1)]
-pub fn p1<S : BuildHasher + Default + Clone>(input: &HashSet<Point,S>) -> usize {
+pub fn p1<S>(input: &HashSet<Point, S>) -> usize
+    where S: BuildHasher + Default + Clone
+{
     let mut seen = HashSet::new();
     iterate(input.clone(),
             |g| automata_step(g, flat_neighbours, lives))
@@ -23,7 +25,7 @@ pub fn p1<S : BuildHasher + Default + Clone>(input: &HashSet<Point,S>) -> usize 
 }
 
 #[aoc(day24, part2)]
-pub fn p2<S : BuildHasher + Default>(input: &HashSet<Point, S>) -> usize {
+pub fn p2<S: BuildHasher + Default>(input: &HashSet<Point, S>) -> usize {
     let btm: HashSet<(Point, i32)> = input.iter().map(|a| (*a, 0)).collect();
     (0..200).fold(btm, |a, _| automata_step(&a, recur_neighbours, lives)).len()
 }
@@ -67,7 +69,7 @@ pub fn d24p2() {
 }
 
 
-pub fn biodiversity<S>(g: &HashSet<Point,S>) -> usize
+pub fn biodiversity<S>(g: &HashSet<Point, S>) -> usize
     where S: BuildHasher
 {
     g.iter().map(|&p| {

@@ -1,7 +1,6 @@
 use num::{One, Zero};
 use std::collections::{HashMap, VecDeque, HashSet};
 use std::hash::{Hash, BuildHasher};
-use std::borrow::Borrow;
 
 pub fn bfs_dist_all<N, C, FN, IN>(start: &N, mut successors: FN) -> HashMap<N, C>
     where
@@ -38,24 +37,22 @@ pub fn to_lookup<I, K, V>(tuples: I) -> HashMap<K, Vec<V>>
     m
 }
 
-pub fn automata_step<T, FN, FC, Q, S>(g: &Q, neighbours: FN, check: FC) -> HashSet<T, S>
+pub fn automata_step<T, FN, FC, S>(g: &HashSet<T, S>, neighbours: FN, check: FC) -> HashSet<T, S>
     where FN: Fn(T) -> Vec<T>,
           FC: Fn(bool, usize) -> bool,
-          T: Ord + Copy + Hash,
+          T: Ord + Copy + Hash + Eq,
           S: BuildHasher + Default,
-          Q: Borrow<HashSet<T, S>>
 {
     let mut counts: HashMap<T, usize> = HashMap::new();
-    let g = g.borrow();
     for &p in g.iter() {
         for n in neighbours(p) {
             *counts.entry(n).or_default() += 1;
         }
     }
-    counts.iter()
-        .filter_map(|(p, &c)| {
-            if check(g.contains(p), c) {
-                Some(*p)
+    counts.into_iter()
+        .filter_map(|(p, c)| {
+            if check(g.contains(&p), c) {
+                Some(p)
             } else { None }
         }).collect()
 }
