@@ -1,31 +1,31 @@
-use std::collections::{BTreeSet, HashSet};
+use std::collections::HashSet;
 use num::pow;
-use std::hash::Hash;
 use crate::utils::points::Point;
 use std::convert::TryInto;
+use itertools::iterate;
+use crate::utils::algorithms::automata_step;
+use std::hash::BuildHasher;
 
 #[aoc_generator(day24)]
-pub fn gen(input: &str) -> BTreeSet<Point> {
+pub fn gen(input: &str) -> HashSet<Point> {
     let hm = crate::utils::points::as_point_map(input);
     hm.iter().filter_map(|(a, b)| if b == &'#' { Some(*a) } else { None }).collect()
 }
 
 #[aoc(day24, part1)]
-pub fn p1(input: &BTreeSet<Point>) -> usize {
+pub fn p1<S : BuildHasher + Default + Clone>(input: &HashSet<Point,S>) -> usize {
     let mut seen = HashSet::new();
-    let mut grid = input.clone();
-    loop {
-        if !seen.insert(grid.clone()) {
-            break biodiversity(&grid);
-        }
-        grid = step(&grid, flat_neighbours, lives);
-    }
+    iterate(input.clone(),
+            |g| automata_step(g, flat_neighbours, lives))
+        .map(|x| biodiversity(&x))
+        .filter(|&x| !seen.insert(x))
+        .nth(0).unwrap()
 }
 
 #[aoc(day24, part2)]
-pub fn p2(input: &BTreeSet<Point>) -> usize {
-    let btm: BTreeSet<(Point, i32)> = input.iter().map(|a| (*a, 0)).collect();
-    (0..200).fold(btm, |a, _| step(&a, recur_neighbours, lives)).len()
+pub fn p2<S : BuildHasher + Default>(input: &HashSet<Point, S>) -> usize {
+    let btm: HashSet<(Point, i32)> = input.iter().map(|a| (*a, 0)).collect();
+    (0..200).fold(btm, |a, _| automata_step(&a, recur_neighbours, lives)).len()
 }
 
 pub fn flat_neighbours(p: Point) -> Vec<Point> {
@@ -60,19 +60,6 @@ pub fn lives(is_alive: bool, neighbour_count: usize) -> bool {
     neighbour_count == 1 || (!is_alive && neighbour_count == 2)
 }
 
-pub fn step<T, FN, FC>(g: &BTreeSet<T>, neighbours: FN, check: FC) -> BTreeSet<T>
-    where FN: Fn(T) -> Vec<T>,
-          FC: Fn(bool, usize) -> bool,
-          T: Ord + Copy + Hash
-{
-    let candidates: HashSet<T> = g.iter().flat_map(|&x| neighbours(x)).collect();
-    candidates.iter()
-        .cloned()
-        .filter(|p| {
-            let n = neighbours(*p).iter().filter(|n| g.contains(n)).count();
-            check(g.contains(p), n)
-        }).collect()
-}
 
 #[test]
 pub fn d24p2() {
@@ -80,7 +67,9 @@ pub fn d24p2() {
 }
 
 
-pub fn biodiversity(g: &BTreeSet<Point>) -> usize {
+pub fn biodiversity<S>(g: &HashSet<Point,S>) -> usize
+    where S: BuildHasher
+{
     g.iter().map(|&p| {
         pow(2, (p.0 + p.1 * 5).try_into().unwrap())
     }).sum()
