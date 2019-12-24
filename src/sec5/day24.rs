@@ -3,7 +3,7 @@ use num::pow;
 use crate::utils::points::Point;
 use std::convert::TryInto;
 use itertools::iterate;
-use crate::utils::algorithms::automata_step;
+use crate::utils::algorithms::{automata_step, automata_step_mut};
 use std::hash::BuildHasher;
 
 #[aoc_generator(day24)]
@@ -24,10 +24,22 @@ pub fn p1<S>(input: &HashSet<Point, S>) -> usize
         .nth(0).unwrap()
 }
 
-#[aoc(day24, part2)]
-pub fn p2<S: BuildHasher + Default>(input: &HashSet<Point, S>) -> usize {
-    let btm: HashSet<(Point, i32)> = input.iter().map(|a| (*a, 0)).collect();
-    (0..200).fold(btm, |a, _| automata_step(&a, recur_neighbours, lives)).len()
+#[aoc(day24, part2, mutate)]
+pub fn p2m<S: BuildHasher + Default>(input: &HashSet<Point, S>) -> usize {
+    let mut g: HashSet<(Point, i32)> = input.iter().map(|a| (*a, 0)).collect();
+    for _ in 0..200 {
+        automata_step_mut(&mut g, recur_neighbours, lives);
+    }
+    g.len()
+}
+
+#[aoc(day24, part2, recreate)]
+pub fn p2c<S: BuildHasher + Default>(input: &HashSet<Point, S>) -> usize {
+    let mut g: HashSet<(Point, i32)> = input.iter().map(|a| (*a, 0)).collect();
+    for _ in 0..200 {
+        g = automata_step(&g, recur_neighbours, lives);
+    }
+    g.len()
 }
 
 pub fn flat_neighbours(p: Point) -> Vec<Point> {
@@ -35,27 +47,26 @@ pub fn flat_neighbours(p: Point) -> Vec<Point> {
 }
 
 pub fn recur_neighbours(p: (Point, i32)) -> Vec<(Point, i32)> {
-    p.0.neighbours().iter().flat_map(move |&n| {
-        let mut ans = Vec::with_capacity(4);
-        if n.0 < 0 { ans.push((Point(1, 2), p.1 + 1)); }
-        if n.1 < 0 { ans.push((Point(2, 1), p.1 + 1)); }
-        if n.0 > 4 { ans.push((Point(3, 2), p.1 + 1)); }
-        if n.1 > 4 { ans.push((Point(2, 3), p.1 + 1)); }
-
-        if n == Point(2, 2) {
-            match p.0 {
-                Point(2, 1) => (0..5).for_each(|x| ans.push((Point(x, 0), p.1 - 1))),
-                Point(1, 2) => (0..5).for_each(|x| ans.push((Point(0, x), p.1 - 1))),
-                Point(3, 2) => (0..5).for_each(|x| ans.push((Point(4, x), p.1 - 1))),
-                Point(2, 3) => (0..5).for_each(|x| ans.push((Point(x, 4), p.1 - 1))),
-                _ => {}
-            }
-        }
-        if ans.is_empty() {
-            ans.push((n, p.1));
-        }
-        ans
-    }).collect()
+    let mut ans = Vec::with_capacity(8);
+    flat_neighbours(p.0).into_iter().filter(|x| x != &Point(2, 2)).for_each(|x| ans.push((x, p.1)));
+    match (p.0).0 {
+        0 => ans.push((Point(1, 2), p.1 + 1)),
+        4 => ans.push((Point(3, 2), p.1 + 1)),
+        _ => ()
+    };
+    match (p.0).1 {
+        0 => ans.push((Point(2, 1), p.1 + 1)),
+        4 => ans.push((Point(2, 3), p.1 + 1)),
+        _ => ()
+    };
+    match p.0 {
+        Point(2, 1) => (0..5).for_each(|x| ans.push((Point(x, 0), p.1 - 1))),
+        Point(1, 2) => (0..5).for_each(|x| ans.push((Point(0, x), p.1 - 1))),
+        Point(3, 2) => (0..5).for_each(|x| ans.push((Point(4, x), p.1 - 1))),
+        Point(2, 3) => (0..5).for_each(|x| ans.push((Point(x, 4), p.1 - 1))),
+        _ => (),
+    };
+    ans
 }
 
 pub fn lives(is_alive: bool, neighbour_count: usize) -> bool {

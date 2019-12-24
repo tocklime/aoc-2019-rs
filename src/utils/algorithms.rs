@@ -1,6 +1,7 @@
 use num::{One, Zero};
 use std::collections::{HashMap, VecDeque, HashSet};
 use std::hash::{Hash, BuildHasher};
+use std::fmt::Debug;
 
 pub fn bfs_dist_all<N, C, FN, IN>(start: &N, mut successors: FN) -> HashMap<N, C>
     where
@@ -55,4 +56,27 @@ pub fn automata_step<T, FN, FC, S>(g: &HashSet<T, S>, neighbours: FN, check: FC)
                 Some(p)
             } else { None }
         }).collect()
+}
+pub fn automata_step_mut<T, FN, FC, S>(g: &mut HashSet<T, S>, neighbours: FN, check: FC)
+    where FN: Fn(T) -> Vec<T>,
+          FC: Fn(bool, usize) -> bool,
+          T: Ord + Copy + Hash + Eq + Debug,
+          S: BuildHasher + Default,
+{
+    let mut counts: HashMap<T, usize> = HashMap::new();
+    for &p in g.iter() {
+        counts.entry(p).or_default();
+        for n in neighbours(p) {
+            *counts.entry(n).or_default() += 1;
+        }
+    }
+    for (p,c) in counts.into_iter(){
+        let is_alive = g.contains(&p);
+        let next_alive = check(is_alive,c);
+        if is_alive && !next_alive {
+            g.remove(&p);
+        }else if !is_alive && next_alive {
+            g.insert(p);
+        }
+    }
 }
