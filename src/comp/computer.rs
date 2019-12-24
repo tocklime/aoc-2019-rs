@@ -170,11 +170,11 @@ where
         other.with_chan_output(tx);
         self
     }
-    fn with_chan_input(&mut self, x: Receiver<MemType>) -> &mut Self {
+    pub fn with_chan_input(&mut self, x: Receiver<MemType>) -> &mut Self {
         self.input_chan = Some(x);
         self
     }
-    fn with_chan_output(&mut self, x: Sender<MemType>) -> &mut Self {
+    pub fn with_chan_output(&mut self, x: Sender<MemType>) -> &mut Self {
         self.output_chan = Some(x);
         self
     }
