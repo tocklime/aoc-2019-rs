@@ -263,8 +263,11 @@ where
         self.step();
         loop {
             let op = self.current_op_with_args();
-            if self.state == ComputerState::HALTED || op.op == OpCode::Input {
-                return self.state != ComputerState::HALTED;
+            if self.state == ComputerState::HALTED {
+                return false;
+            }
+            if  op.op == OpCode::Input  && self.fixed_input.is_empty() {
+                return true;
             }
             op.execute(self);
         }
